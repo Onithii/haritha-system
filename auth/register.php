@@ -1,5 +1,5 @@
 <?php
-include "config/database.php";
+include("../config/db.php");
 
 if (isset($_POST['register'])) {
     $f_name      = $_POST['f_name'];
@@ -28,7 +28,7 @@ if (isset($_POST['register'])) {
             )";
 
     if (mysqli_query($conn, $sql)) {
-        header("Location: citizen_dash.php");
+        header("Location: ..citizen/citizen_dash.php");
         exit();
     } else {
         echo "Registration Failed: " . mysqli_error($conn);
