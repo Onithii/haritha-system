@@ -66,7 +66,6 @@
 <div class="card">
     <h3>Submit Complaint</h3>
     <p>Report environmental issues in your area.</p>
-
     <a href="make_complaint.php">
         <button type="button">Submit Complaint</button>
     </a>

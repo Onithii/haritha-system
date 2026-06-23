@@ -3,6 +3,7 @@ session_start();
 include("../config/db.php");
 
 // 1. Secure Access Check: Ensure only logged-in Citizens (Role 1) can access this page
+
 if (!isset($_SESSION['role_id']) || $_SESSION['role_id'] != 1) {
     header("Location: ../auth/login.php");
     exit();
@@ -105,7 +106,21 @@ if (isset($_POST['submit_complaint'])) {
 <head>
     <meta charset="UTF-8">
     <title>Submit Environmental Complaint</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
     <style>
+
+        #map {
+            width: 100%;
+            max-width: 600px; /* Limits how wide the map gets */
+            height: 400px;    /* Sets a fixed height */
+            margin: 20px 0;   /* Adds spacing around the map container */
+            border-radius: 8px; /* Optional: rounds the corners slightly */
+            box-shadow: 0px 2px 8px gray; /* Optional: matches your theme shadow */
+        }
+
         body {
             font-family: Arial, sans-serif;
             background-color: #f2f5f2;
@@ -209,6 +224,8 @@ if (isset($_POST['submit_complaint'])) {
 </head>
 <body>
 
+<div id = "map"></div>
+
 <div class="form-container">
     <h2>Report Environmental Issue</h2>
 
@@ -270,6 +287,14 @@ if (isset($_POST['submit_complaint'])) {
 
     <a href="citizen_dash.php" class="back-link">← Return to Dashboard</a>
 </div>
+
+<script>
+        var map = L.map('map').setView([0, 0], 1);
+        L.tileLayer('https://api.maptiler.com/maps/streets-v4/{z}/{x}/{y}.png?key=ZnPljaWSmAXFM3VkUSuc', {
+            attribution: '<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>',
+        }).addTo(map);
+
+    </script>
 
 </body>
 </html>
