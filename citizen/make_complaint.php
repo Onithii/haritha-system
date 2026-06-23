@@ -224,10 +224,10 @@ if (isset($_POST['submit_complaint'])) {
 </head>
 <body>
 
-<div id = "map"></div>
 
 <div class="form-container">
     <h2>Report Environmental Issue</h2>
+    <div id="map"></div>
 
     <?php if (!empty($error)): ?>
         <div class="alert alert-error"><?php echo htmlspecialchars($error); ?></div>
@@ -289,12 +289,32 @@ if (isset($_POST['submit_complaint'])) {
 </div>
 
 <script>
-        var map = L.map('map').setView([0, 0], 1);
-        L.tileLayer('https://api.maptiler.com/maps/streets-v4/{z}/{x}/{y}.png?key=ZnPljaWSmAXFM3VkUSuc', {
-            attribution: '<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>',
-        }).addTo(map);
+    // 1. Define the geographical boundaries (bounding box) for Sri Lanka
+// [South-West corner (Latitude, Longitude), North-East corner (Latitude, Longitude)]
+var sriLankaBounds = [
+    [5.9000, 79.5000], // Bottom-left corner near Dondra Head
+    [9.9000, 82.0000]  // Top-right corner past Point Pedro
+];
 
-    </script>
+// 2. Initialize the map centered on Sri Lanka with maxBounds applied
+var map = L.map('map', {
+    center: [7.8731, 80.7718], // Middle of Sri Lanka
+    zoom: 7,                   // Ideal starting zoom level to see the whole island
+    minZoom: 7,                // Prevents zooming out too far
+    maxBounds: sriLankaBounds, // Restricts panning outside this box
+    maxBoundsViscosity: 1.0    // Keeps the map rigidly snapped inside the boundary limits
+});
+
+// 3. Load the standard OpenStreetMap layer
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+}).addTo(map);
+
+// 4. Force boundaries layout to render perfectly inside your styled form element
+setTimeout(function(){ 
+    map.invalidateSize(); 
+}, 200);
+</script>
 
 </body>
 </html>
