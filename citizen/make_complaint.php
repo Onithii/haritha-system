@@ -3,7 +3,6 @@ session_start();
 include("../config/db.php");
 
 // 1. Secure Access Check: Ensure only logged-in Citizens (Role 1) can access this page
-
 if (!isset($_SESSION['role_id']) || $_SESSION['role_id'] != 1) {
     header("Location: ../auth/login.php");
     exit();
@@ -110,15 +109,18 @@ if (isset($_POST['submit_complaint'])) {
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
-    <style>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 
+    <style>
         #map {
             width: 100%;
-            max-width: 600px; /* Limits how wide the map gets */
-            height: 400px;    /* Sets a fixed height */
-            margin: 20px 0;   /* Adds spacing around the map container */
-            border-radius: 8px; /* Optional: rounds the corners slightly */
-            box-shadow: 0px 2px 8px gray; /* Optional: matches your theme shadow */
+            max-width: 600px;
+            height: 400px;    
+            margin: 20px 0;   
+            border-radius: 8px; 
+            box-shadow: 0px 2px 8px gray; 
+            z-index: 1; /* Keeps map elements beneath header layers */
         }
 
         body {
@@ -224,7 +226,6 @@ if (isset($_POST['submit_complaint'])) {
 </head>
 <body>
 
-
 <div class="form-container">
     <h2>Report Environmental Issue</h2>
     <div id="map"></div>
@@ -274,11 +275,11 @@ if (isset($_POST['submit_complaint'])) {
         <div class="geo-group">
             <div class="form-group">
                 <label for="latitude">Latitude (Optional)</label>
-                <input type="text" id="latitude" name="latitude" placeholder="e.g., 6.9271">
+                <input type="text" id="latitude" name="latitude" placeholder="e.g., 6.9271" readonly>
             </div>
             <div class="form-group">
                 <label for="longitude">Longitude (Optional)</label>
-                <input type="text" id="longitude" name="longitude" placeholder="e.g., 79.8612">
+                <input type="text" id="longitude" name="longitude" placeholder="e.g., 79.8612" readonly>
             </div>
         </div>
 
@@ -289,28 +290,87 @@ if (isset($_POST['submit_complaint'])) {
 </div>
 
 <script>
-    // 1. Define the geographical boundaries (bounding box) for Sri Lanka
-// [South-West corner (Latitude, Longitude), North-East corner (Latitude, Longitude)]
+// 1. Define bounding box for Sri Lanka
 var sriLankaBounds = [
-    [5.9000, 79.5000], // Bottom-left corner near Dondra Head
-    [9.9000, 82.0000]  // Top-right corner past Point Pedro
+    [5.9000, 79.5000], 
+    [9.9000, 82.0000]  
 ];
 
-// 2. Initialize the map centered on Sri Lanka with maxBounds applied
+// 2. Initialize map
 var map = L.map('map', {
-    center: [7.8731, 80.7718], // Middle of Sri Lanka
-    zoom: 7,                   // Ideal starting zoom level to see the whole island
-    minZoom: 7,                // Prevents zooming out too far
-    maxBounds: sriLankaBounds, // Restricts panning outside this box
-    maxBoundsViscosity: 1.0    // Keeps the map rigidly snapped inside the boundary limits
+    center: [7.8731, 80.7718], 
+    zoom: 7,                   
+    minZoom: 7,                
+    maxBounds: sriLankaBounds, 
+    maxBoundsViscosity: 1.0    
 });
 
-// 3. Load the standard OpenStreetMap layer
+// 3. Load OpenStreetMap tiles
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 }).addTo(map);
 
-// 4. Force boundaries layout to render perfectly inside your styled form element
+// Global reference variable for the search/click marker pin
+var currentMarker = null;
+
+// Function to update coordinates on map pin manipulation
+function updateCoordinatesInput(lat, lng) {
+    document.getElementById('latitude').value = parseFloat(lat).toFixed(6);
+    document.getElementById('longitude').value = parseFloat(lng).toFixed(6);
+}
+
+// 4. ADDED: Configure Search Bar Controller
+var geocoder = L.Control.geocoder({
+    defaultMarkGeocode: false,
+    placeholder: "Search for a village, town or street...",
+    geocoder: L.Control.Geocoder.nominatim({
+        geocodingQueryParams: {
+            viewbox: '79.5,9.9,82.0,5.9', // Biases searches heavily inside Sri Lanka coordinates
+            bounded: 1
+        }
+    })
+})
+.on('markgeocode', function(e) {
+    var latlng = e.geocode.center;
+    
+    // Smooth scroll the viewport window over to searched node
+    map.setView(latlng, 14);
+
+    // Reposition marker reference point cleanly
+    if (currentMarker) {
+        currentMarker.setLatLng(latlng);
+    } else {
+        currentMarker = L.marker(latlng, { draggable: true }).addTo(map);
+        
+        // Update values if user drags the search marker manually later
+        currentMarker.on('dragend', function(event) {
+            var position = currentMarker.getLatLng();
+            updateCoordinatesInput(position.lat, position.lng);
+        });
+    }
+    updateCoordinatesInput(latlng.lat, latlng.lng);
+})
+.addTo(map);
+
+// 5. User Clicking functionality on map option fallback
+map.on('click', function(e) {
+    var lat = e.latlng.lat;
+    var lng = e.latlng.lng;
+
+    if (currentMarker) {
+        currentMarker.setLatLng(e.latlng);
+    } else {
+        currentMarker = L.marker(e.latlng, { draggable: true }).addTo(map);
+        
+        currentMarker.on('dragend', function(event) {
+            var position = currentMarker.getLatLng();
+            updateCoordinatesInput(position.lat, position.lng);
+        });
+    }
+    updateCoordinatesInput(lat, lng);
+});
+
+// Force layout refresh 
 setTimeout(function(){ 
     map.invalidateSize(); 
 }, 200);
