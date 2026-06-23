@@ -4,7 +4,7 @@ include("../config/db.php");
 
 $error = "";
 
-if (isset($_POST['login'])) {
+if (isset($_POST['login'])) {//onithi123  password123
     $username = trim($_POST['username']);
     $password = $_POST['password'];
 
