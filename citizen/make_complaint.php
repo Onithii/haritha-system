@@ -2,11 +2,24 @@
 session_start();
 include("../config/db.php");
 
-// 1. Secure Access Check: Ensure only logged-in Citizens (Role 1) can access this page
-if (!isset($_SESSION['role_id']) || $_SESSION['role_id'] != 1) {
+
+// 1. Secure Access Check: Ensure user is logged in, has a valid ID, and is a Citizen (Role 1)
+if (!isset($_SESSION['role_id']) || $_SESSION['role_id'] != 1 || empty($_SESSION['user_id'])) {
+    // Forceful clear of any corrupted or partial session tokens
+    session_unset();
+    session_destroy();
+    
     header("Location: ../auth/login.php");
     exit();
 }
+
+$citizen_id = $_SESSION['user_id'];
+// 1. Secure Access Check: Ensure only logged-in Citizens (Role 1) can access this page
+//if (!isset($_SESSION['role_id']) || $_SESSION['role_id'] != 1) {
+  //  header("Location: ../auth/login.php");
+    //exit();
+//}
+
 
 $citizen_id = $_SESSION['user_id'];
 $error = "";
@@ -29,11 +42,11 @@ if (isset($_POST['submit_complaint'])) {
     $description          = trim($_POST['description']);
     $location_description = trim($_POST['location_description']);
     
-    // Optional coordinates defaults
-    $latitude  = !empty($_POST['latitude']) ? floatval($_POST['latitude']) : null;
-    $longitude = !empty($_POST['longitude']) ? floatval($_POST['longitude']) : null;
+    // UPDATED: Standardize coordinates fallback data to align cleanly with your DECIMAL columns
+    $latitude  = (isset($_POST['latitude']) && $_POST['latitude'] !== '') ? floatval($_POST['latitude']) : null;
+    $longitude = (isset($_POST['longitude']) && $_POST['longitude'] !== '') ? floatval($_POST['longitude']) : null;
     
-    // Initial Complaint Status: Pending (assuming 1 is 'Pending' inside your statuses table)
+    // Initial Complaint Status: Pending 
     $status_id = 1; 
     $image_path = null;
 
@@ -50,11 +63,9 @@ if (isset($_POST['submit_complaint'])) {
             $file_ext  = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
 
             if (in_array($file_ext, $allowed_extensions)) {
-                // Ensure a unique name for each image file to avoid conflicts
                 $new_file_name = "IMG_" . uniqid() . "." . $file_ext;
                 $upload_dir = "../uploads/";
                 
-                // Create directory if it doesn't exist yet
                 if (!is_dir($upload_dir)) {
                     mkdir($upload_dir, 0777, true);
                 }
@@ -79,6 +90,7 @@ if (isset($_POST['submit_complaint'])) {
             
             $stmt = mysqli_prepare($conn, $sql);
             if ($stmt) {
+                // Configured parameter bindings safely matching structural types
                 mysqli_stmt_bind_param(
                     $stmt, 
                     "iiissssss", 
@@ -90,7 +102,7 @@ if (isset($_POST['submit_complaint'])) {
                 if (mysqli_stmt_execute($stmt)) {
                     $success = "Your complaint has been submitted successfully!";
                 } else {
-                    $error = "Database Error: Could not save your complaint.";
+                    $error = "Database Error: Could not save your complaint. " . mysqli_error($conn);
                 }
                 mysqli_stmt_close($stmt);
             } else {
@@ -120,7 +132,7 @@ if (isset($_POST['submit_complaint'])) {
             margin: 20px 0;   
             border-radius: 8px; 
             box-shadow: 0px 2px 8px gray; 
-            z-index: 1; /* Keeps map elements beneath header layers */
+            z-index: 1;
         }
 
         body {
@@ -290,13 +302,11 @@ if (isset($_POST['submit_complaint'])) {
 </div>
 
 <script>
-// 1. Define bounding box for Sri Lanka
 var sriLankaBounds = [
     [5.9000, 79.5000], 
     [9.9000, 82.0000]  
 ];
 
-// 2. Initialize map
 var map = L.map('map', {
     center: [7.8731, 80.7718], 
     zoom: 7,                   
@@ -305,44 +315,36 @@ var map = L.map('map', {
     maxBoundsViscosity: 1.0    
 });
 
-// 3. Load OpenStreetMap tiles
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 }).addTo(map);
 
-// Global reference variable for the search/click marker pin
 var currentMarker = null;
 
-// Function to update coordinates on map pin manipulation
 function updateCoordinatesInput(lat, lng) {
     document.getElementById('latitude').value = parseFloat(lat).toFixed(6);
     document.getElementById('longitude').value = parseFloat(lng).toFixed(6);
 }
 
-// 4. ADDED: Configure Search Bar Controller
 var geocoder = L.Control.geocoder({
     defaultMarkGeocode: false,
     placeholder: "Search for a village, town or street...",
     geocoder: L.Control.Geocoder.nominatim({
         geocodingQueryParams: {
-            viewbox: '79.5,9.9,82.0,5.9', // Biases searches heavily inside Sri Lanka coordinates
+            viewbox: '79.5,9.9,82.0,5.9', 
             bounded: 1
         }
     })
 })
 .on('markgeocode', function(e) {
     var latlng = e.geocode.center;
-    
-    // Smooth scroll the viewport window over to searched node
     map.setView(latlng, 14);
 
-    // Reposition marker reference point cleanly
     if (currentMarker) {
         currentMarker.setLatLng(latlng);
     } else {
         currentMarker = L.marker(latlng, { draggable: true }).addTo(map);
         
-        // Update values if user drags the search marker manually later
         currentMarker.on('dragend', function(event) {
             var position = currentMarker.getLatLng();
             updateCoordinatesInput(position.lat, position.lng);
@@ -352,7 +354,6 @@ var geocoder = L.Control.geocoder({
 })
 .addTo(map);
 
-// 5. User Clicking functionality on map option fallback
 map.on('click', function(e) {
     var lat = e.latlng.lat;
     var lng = e.latlng.lng;
@@ -370,7 +371,6 @@ map.on('click', function(e) {
     updateCoordinatesInput(lat, lng);
 });
 
-// Force layout refresh 
 setTimeout(function(){ 
     map.invalidateSize(); 
 }, 200);

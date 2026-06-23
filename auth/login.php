@@ -4,7 +4,7 @@ include("../config/db.php");
 
 $error = "";
 
-if (isset($_POST['login'])) {//onithi123  password123
+if (isset($_POST['login'])) { // onithi123  password123
     $username = trim($_POST['username']);
     $password = $_POST['password'];
 
@@ -26,8 +26,8 @@ if (isset($_POST['login'])) {//onithi123  password123
                     // Regenerate session ID for security (prevents session fixation)
                     session_regenerate_id(true);
 
-                    // Store essential user info in the session
-                    $_SESSION['user_id']  = $user['id'];
+                    // FIXED: Changed from $user['id'] to match the 'user_id' column from your SELECT query
+                    $_SESSION['user_id']  = $user['user_id'];
                     $_SESSION['username'] = $user['username'];
                     $_SESSION['role_id']  = $user['role_id'];
 
