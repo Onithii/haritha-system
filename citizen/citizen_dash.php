@@ -63,15 +63,14 @@
 
 <div class="container">
 
-    <div class="card">
-        <h3>Submit Complaint</h3>
-        <p>Report environmental issues in your area.</p>
+<div class="card">
+    <h3>Submit Complaint</h3>
+    <p>Report environmental issues in your area.</p>
 
-        <button>
-            Submit Complaint
-            
-        </button>
-    </div>
+    <a href="make_complaint.php">
+        <button type="button">Submit Complaint</button>
+    </a>
+</div>
 
 
     <div class="card">
