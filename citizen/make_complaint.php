@@ -2,30 +2,19 @@
 session_start();
 include("../config/db.php");
 
-
-// 1. Secure Access Check: Ensure user is logged in, has a valid ID, and is a Citizen (Role 1)
+// 1. Secure Access Check
 if (!isset($_SESSION['role_id']) || $_SESSION['role_id'] != 1 || empty($_SESSION['user_id'])) {
-    // Forceful clear of any corrupted or partial session tokens
     session_unset();
     session_destroy();
-    
     header("Location: ../auth/login.php");
     exit();
 }
 
 $citizen_id = $_SESSION['user_id'];
-// 1. Secure Access Check: Ensure only logged-in Citizens (Role 1) can access this page
-//if (!isset($_SESSION['role_id']) || $_SESSION['role_id'] != 1) {
-  //  header("Location: ../auth/login.php");
-    //exit();
-//}
-
-
-$citizen_id = $_SESSION['user_id'];
 $error = "";
 $success = "";
 
-// 2. Fetch complaint categories dynamically from the table
+// 2. Fetch complaint categories dynamically
 $categories = [];
 $cat_query = "SELECT category_id, category_name FROM complaint_categories ORDER BY category_id ASC";
 $cat_result = mysqli_query($conn, $cat_query);
@@ -42,15 +31,12 @@ if (isset($_POST['submit_complaint'])) {
     $description          = trim($_POST['description']);
     $location_description = trim($_POST['location_description']);
     
-    // UPDATED: Standardize coordinates fallback data to align cleanly with your DECIMAL columns
     $latitude  = (isset($_POST['latitude']) && $_POST['latitude'] !== '') ? floatval($_POST['latitude']) : null;
     $longitude = (isset($_POST['longitude']) && $_POST['longitude'] !== '') ? floatval($_POST['longitude']) : null;
     
-    // Initial Complaint Status: Pending 
-    $status_id = 1; 
+    $status_id = 1; // Pending
     $image_path = null;
 
-    // Validate fundamental strings
     if (empty($title) || empty($description) || empty($category_id)) {
         $error = "Title, Category, and Description are required fields.";
     } else {
@@ -80,7 +66,7 @@ if (isset($_POST['submit_complaint'])) {
             }
         }
 
-        // 4. Save Record to Database via Secure Prepared Statement
+        // 4. Save Record and Auto-Escalate to Nearest GN via Haversine Formula
         if (empty($error)) {
             $sql = "INSERT INTO complaints (
                         citizen_id, category_id, status_id, title, 
@@ -90,7 +76,6 @@ if (isset($_POST['submit_complaint'])) {
             
             $stmt = mysqli_prepare($conn, $sql);
             if ($stmt) {
-                // Configured parameter bindings safely matching structural types
                 mysqli_stmt_bind_param(
                     $stmt, 
                     "iiissssss", 
@@ -100,7 +85,42 @@ if (isset($_POST['submit_complaint'])) {
                 );
 
                 if (mysqli_stmt_execute($stmt)) {
+                    $complaint_id = mysqli_insert_id($conn);
                     $success = "Your complaint has been submitted successfully!";
+                    
+                    // Proximity auto-routing calculations
+                    if ($latitude !== null && $longitude !== null) {
+                        $gn_sql = "SELECT user_id, 
+                                          (6371 * ACOS(
+                                              COS(RADIANS(?)) * COS(RADIANS(office_latitude)) * COS(RADIANS(office_longitude) - RADIANS(?)) + 
+                                              SIN(RADIANS(?)) * SIN(RADIANS(office_latitude))
+                                          )) AS distance 
+                                   FROM users 
+                                   WHERE role_id = 2 AND office_latitude IS NOT NULL 
+                                   ORDER BY distance ASC 
+                                   LIMIT 1";
+                        
+                        $gn_stmt = mysqli_prepare($conn, $gn_sql);
+                        if ($gn_stmt) {
+                            mysqli_stmt_bind_param($gn_stmt, "ddd", $latitude, $longitude, $latitude);
+                            mysqli_stmt_execute($gn_stmt);
+                            $gn_result = mysqli_stmt_get_result($gn_stmt);
+                            
+                            if ($closest_gn = mysqli_fetch_assoc($gn_result)) {
+                                $assigned_gn_id = $closest_gn['user_id'];
+                                
+                                $update_sql = "UPDATE complaints SET assigned_gn_id = ? WHERE complaint_id = ?";
+                                $update_stmt = mysqli_prepare($conn, $update_sql);
+                                if ($update_stmt) {
+                                    mysqli_stmt_bind_param($update_stmt, "ii", $assigned_gn_id, $complaint_id);
+                                    mysqli_stmt_execute($update_stmt);
+                                    mysqli_stmt_close($update_stmt);
+                                    $success = "Your complaint has been submitted and auto-escalated to the nearest Grama Niladhari officer!";
+                                }
+                            }
+                            mysqli_stmt_close($gn_stmt);
+                        }
+                    }
                 } else {
                     $error = "Database Error: Could not save your complaint. " . mysqli_error($conn);
                 }
@@ -117,124 +137,10 @@ if (isset($_POST['submit_complaint'])) {
 <head>
     <meta charset="UTF-8">
     <title>Submit Environmental Complaint</title>
-
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-
     <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
-    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
-
-    <style>
-        #map {
-            width: 100%;
-            max-width: 600px;
-            height: 400px;    
-            margin: 20px 0;   
-            border-radius: 8px; 
-            box-shadow: 0px 2px 8px gray; 
-            z-index: 1;
-        }
-
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f2f5f2;
-            margin: 0;
-            padding: 20px;
-        }
-
-        .form-container {
-            max-width: 600px;
-            margin: 30px auto;
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0px 2px 8px gray;
-        }
-
-        h2 {
-            text-align: center;
-            color: #2e7d32;
-            margin-bottom: 25px;
-        }
-
-        .alert {
-            padding: 12px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            font-size: 14px;
-            border-left: 5px solid;
-        }
-        .alert-error {
-            background-color: #ffebee;
-            color: #c62828;
-            border-left-color: #e53935;
-        }
-        .alert-success {
-            background-color: #e8f5e9;
-            color: #2e7d32;
-            border-left-color: #4caf50;
-        }
-
-        .form-group {
-            margin-bottom: 18px;
-        }
-
-        label {
-            display: block;
-            font-weight: bold;
-            margin-bottom: 5px;
-            color: #333;
-        }
-
-        input[type="text"], 
-        select, 
-        textarea {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            box-sizing: border-box;
-            font-size: 14px;
-        }
-
-        textarea {
-            resize: vertical;
-            height: 120px;
-        }
-
-        .geo-group {
-            display: flex;
-            gap: 15px;
-        }
-        .geo-group .form-group {
-            flex: 1;
-        }
-
-        button {
-            width: 100%;
-            padding: 12px;
-            background: #2e7d32;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-            margin-top: 10px;
-        }
-
-        button:hover {
-            background: #1b5e20;
-        }
-
-        .back-link {
-            display: block;
-            text-align: center;
-            margin-top: 20px;
-            color: #2e7d32;
-            text-decoration: none;
-        }
-    </style>
+    
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -251,7 +157,6 @@ if (isset($_POST['submit_complaint'])) {
     <?php endif; ?>
 
     <form method="POST" action="" enctype="multipart/form-data">
-        
         <div class="form-group">
             <label for="title">Complaint Title</label>
             <input type="text" id="title" name="title" placeholder="Brief title of the hazard" required>
@@ -301,80 +206,10 @@ if (isset($_POST['submit_complaint'])) {
     <a href="citizen_dash.php" class="back-link">← Return to Dashboard</a>
 </div>
 
-<script>
-var sriLankaBounds = [
-    [5.9000, 79.5000], 
-    [9.9000, 82.0000]  
-];
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 
-var map = L.map('map', {
-    center: [7.8731, 80.7718], 
-    zoom: 7,                   
-    minZoom: 7,                
-    maxBounds: sriLankaBounds, 
-    maxBoundsViscosity: 1.0    
-});
-
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-}).addTo(map);
-
-var currentMarker = null;
-
-function updateCoordinatesInput(lat, lng) {
-    document.getElementById('latitude').value = parseFloat(lat).toFixed(6);
-    document.getElementById('longitude').value = parseFloat(lng).toFixed(6);
-}
-
-var geocoder = L.Control.geocoder({
-    defaultMarkGeocode: false,
-    placeholder: "Search for a village, town or street...",
-    geocoder: L.Control.Geocoder.nominatim({
-        geocodingQueryParams: {
-            viewbox: '79.5,9.9,82.0,5.9', 
-            bounded: 1
-        }
-    })
-})
-.on('markgeocode', function(e) {
-    var latlng = e.geocode.center;
-    map.setView(latlng, 14);
-
-    if (currentMarker) {
-        currentMarker.setLatLng(latlng);
-    } else {
-        currentMarker = L.marker(latlng, { draggable: true }).addTo(map);
-        
-        currentMarker.on('dragend', function(event) {
-            var position = currentMarker.getLatLng();
-            updateCoordinatesInput(position.lat, position.lng);
-        });
-    }
-    updateCoordinatesInput(latlng.lat, latlng.lng);
-})
-.addTo(map);
-
-map.on('click', function(e) {
-    var lat = e.latlng.lat;
-    var lng = e.latlng.lng;
-
-    if (currentMarker) {
-        currentMarker.setLatLng(e.latlng);
-    } else {
-        currentMarker = L.marker(e.latlng, { draggable: true }).addTo(map);
-        
-        currentMarker.on('dragend', function(event) {
-            var position = currentMarker.getLatLng();
-            updateCoordinatesInput(position.lat, position.lng);
-        });
-    }
-    updateCoordinatesInput(lat, lng);
-});
-
-setTimeout(function(){ 
-    map.invalidateSize(); 
-}, 200);
-</script>
+<script src="map_handler.js"></script>
 
 </body>
 </html>
