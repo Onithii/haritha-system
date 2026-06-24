@@ -109,7 +109,7 @@ if (isset($_POST['submit_complaint'])) {
                             if ($closest_gn = mysqli_fetch_assoc($gn_result)) {
                                 $assigned_gn_id = $closest_gn['user_id'];
                                 
-                                $update_sql = "UPDATE complaints SET assigned_gn_id = ? WHERE complaint_id = ?";
+                                $update_sql = "UPDATE complaints SET assigned_to_id = ? WHERE complaint_id = ?";
                                 $update_stmt = mysqli_prepare($conn, $update_sql);
                                 if ($update_stmt) {
                                     mysqli_stmt_bind_param($update_stmt, "ii", $assigned_gn_id, $complaint_id);
@@ -140,7 +140,7 @@ if (isset($_POST['submit_complaint'])) {
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
     
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="../css/style.css">
 </head>
 <body>
 
@@ -209,7 +209,6 @@ if (isset($_POST['submit_complaint'])) {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 
-<script src="map_handler.js"></script>
-
+<script src="../js/map_handler.js"></script>
 </body>
 </html>
