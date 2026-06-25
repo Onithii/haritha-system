@@ -35,6 +35,11 @@ if (isset($_POST['login'])) { // onithi123  password123
                     $_SESSION['role_id']  = $user['role_id'];
 
                     // Role-Based Redirection Matrix
+                    //citizen-1
+                    //gn-2
+                    //la-3
+                    //ds-4  
+                    //admin-5
                     switch ($user['role_id']) {
                         case 1:
                             header("Location: ../citizen/citizen_dash.php");

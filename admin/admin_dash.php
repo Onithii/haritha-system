@@ -1,3 +1,15 @@
+<?php
+session_start();
+include("../config/db.php");
+
+// Secure Access Check: Ensure user is logged in and is an Admin (Role 5)
+if (!isset($_SESSION['role_id']) || $_SESSION['role_id'] != 5 || empty($_SESSION['user_id'])) {
+    session_unset();
+    session_destroy();
+    header("Location: ../auth/login.php");
+    exit();
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
