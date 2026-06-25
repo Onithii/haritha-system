@@ -24,7 +24,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $password = trim($_POST['password']);
     $role_id = intval($_POST['role_id']);
     
-    // Address & Geolocation parameters mapping to your schema variables
     $office_address = trim($_POST['office_address']);
     $gn_division = trim($_POST['gn_division']);
     $ds_division = trim($_POST['ds_division']);
@@ -32,19 +31,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $latitude = !empty($_POST['latitude']) ? floatval($_POST['latitude']) : null;
     $longitude = !empty($_POST['longitude']) ? floatval($_POST['longitude']) : null;
 
-    // Check mandatory fields defined by your database schema constraints
     if (empty($username) || empty($password) || empty($f_name) || empty($l_name) || empty($nic) || empty($phone_number) || empty($email) || empty($role_id)) {
         $error = "Please fill in all mandatory account profile fields (*).";
     } else {
-        // Hash password natively
         $hashed_password = password_hash($password, PASSWORD_BCRYPT);
 
-        // Updated query to match your database layout perfectly
         $sql = "INSERT INTO users (f_name, l_name, nic, phone_number, email, username, password, role_id, address, gn_division, ds_division, district, office_latitude, office_longitude) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = mysqli_prepare($conn, $sql);
 
         if ($stmt) {
-            // Bind parameters matching data type structures: s = string, i = integer, d = double
             mysqli_stmt_bind_param($stmt, "sssssssissssdd", $f_name, $l_name, $nic, $phone_number, $email, $username, $hashed_password, $role_id, $office_address, $gn_division, $ds_division, $district, $latitude, $longitude);
             
             if (mysqli_stmt_execute($stmt)) {
@@ -66,32 +61,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <title>Admin - Manage Users</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
-    <style>
-        body { font-family: Arial, sans-serif; background-color: #f2f5f2; margin: 0; padding-bottom: 50px; }
-        .header { background-color: #1b5e20; color: white; padding: 20px; text-align: center; position: relative; }
-        .back-btn { position: absolute; top: 25px; left: 20px; color: white; text-decoration: none; font-weight: bold; background: #003300; padding: 8px 15px; border-radius: 5px; }
-        
-        .form-container { width: 55%; min-width: 650px; margin: 30px auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0px 2px 8px gray; }
-        h2 { color: #1b5e20; margin-top: 0; border-bottom: 2px solid #a5d6a7; padding-bottom: 10px; }
-        
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
-        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-        
-        .row { display: flex; gap: 15px; }
-        .row .form-group { flex: 1; }
-        
-        #map { height: 320px; width: 100%; border-radius: 5px; margin-top: 10px; border: 2px dashed #1b5e20; }
-        
-        .submit-btn { background-color: #1b5e20; color: white; border: none; padding: 12px; cursor: pointer; border-radius: 5px; width: 100%; font-weight: bold; font-size: 16px; margin-top: 15px; }
-        .submit-btn:hover { background-color: #003300; }
-        
-        .alert { padding: 12px; margin-bottom: 15px; border-radius: 5px; font-weight: bold; }
-        .alert-error { background-color: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
-        .alert-success { background-color: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
-        
-        .map-instruction { font-size: 13px; color: #555; font-style: italic; margin-top: 5px; display: block; }
-    </style>
+    <link rel="stylesheet" href="../css/style.css">
 </head>
 <body>
 
@@ -126,7 +96,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <div class="row">
             <div class="form-group">
                 <label>NIC Number *</label>
-                <input type="text" name="nic" required placeholder="e.g., 199912345678 or 991234567V">
+                <input type="text" name="nic" required placeholder="e.g., 199912345678">
             </div>
             <div class="form-group">
                 <label>Phone Number *</label>
@@ -206,107 +176,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
-<script>
-    // 1. Define Strict Geographic Boundaries for Sri Lanka
-    // Southwest corner (lat, lon) and Northeast corner (lat, lon)
-    var southWest = L.latLng(5.9000, 79.5000);
-    var northEast = L.latLng(9.9500, 82.0000);
-    var sriLankaBounds = L.latLngBounds(southWest, northEast);
-
-    var defaultLat = 6.9271;
-    var defaultLng = 79.8612;
-    
-    // 2. Initialize Map with Max Bounds and Constraint Enforcements
-    var map = L.map('map', {
-        maxBounds: sriLankaBounds,       // Lock camera inside these boundaries
-        maxBoundsViscosity: 1.0,         // Strong bounce-back effect if user tries to drag outside
-        minZoom: 7,                      // Prevent zooming out to a world view
-        maxZoom: 19
-    }).setView([defaultLat, defaultLng], 12);
-    
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
-
-    var marker = L.marker([defaultLat, defaultLng], {draggable: true}).addTo(map);
-
-    // 3. Initialize Search Control Restricted to Sri Lanka (Country Code: lk)
-    var geocoder = L.Control.geocoder({
-        defaultMarkGeocode: false,
-        geocoder: L.Control.geocoder.nominatim({
-            geocodingQueryParams: {
-                countrycodes: 'lk' // Restricts search queries to Sri Lankan results only
-            }
-        })
-    })
-    .on('markgeocode', function(e) {
-        var center = e.geocode.center;
-        
-        // Safety check to ensure searched location falls inside domestic boundaries
-        if (sriLankaBounds.contains(center)) {
-            marker.setLatLng(center);
-            map.setView(center, 15);
-            updateGeocodedMetrics(center.lat, center.lng);
-        } else {
-            alert("The selected location falls outside Sri Lanka regional system boundaries.");
-        }
-    })
-    .addTo(map);
-
-    // Trigger update on pin drag release
-    marker.on('dragend', function (e) {
-        var coord = marker.getLatLng();
-        
-        if (sriLankaBounds.contains(coord)) {
-            updateGeocodedMetrics(coord.lat, coord.lng);
-        } else {
-            // Snap back to default center if dropped outside borders
-            marker.setLatLng([defaultLat, defaultLng]);
-            updateGeocodedMetrics(defaultLat, defaultLng);
-            alert("Cannot position administrative profiles outside Sri Lanka.");
-        }
-    });
-
-    // Trigger update on map layout area click
-    map.on('click', function(e) {
-        if (sriLankaBounds.contains(e.latlng)) {
-            marker.setLatLng(e.latlng);
-            updateGeocodedMetrics(e.latlng.lat, e.latlng.lng);
-        }
-    });
-
-    function updateGeocodedMetrics(lat, lng) {
-        document.getElementById('latitude').value = lat.toFixed(6);
-        document.getElementById('longitude').value = lng.toFixed(6);
-
-        // Reverse geocoding parameter set with domestic country restriction matching system policies
-        var reverseUrl = "https://nominatim.openstreetmap.org/reverse?format=json&lat=" + lat + "&lon=" + lng + "&zoom=18&addressdetails=1&countrycodes=lk";
-
-        fetch(reverseUrl)
-            .then(response => response.json())
-            .then(data => {
-                if (data && data.display_name) {
-                    document.getElementById('office_address').value = data.display_name;
-
-                    var addr = data.address;
-                    
-                    // Deduce metrics safely depending on geographic specificity levels
-                    var derivedGN = addr.suburb || addr.neighbourhood || addr.village || "N/A";
-                    var derivedDS = addr.suburb || addr.city_district || addr.town || addr.city || "N/A";
-                    var derivedDistrict = addr.state_district || addr.county || "N/A";
-
-                    document.getElementById('gn_division').value = derivedGN;
-                    document.getElementById('ds_division').value = derivedDS;
-                    document.getElementById('district').value = derivedDistrict;
-                }
-            })
-            .catch(error => {
-                console.error("Reverse Geocoding Failure: ", error);
-            });
-    }
-</script>
+<script src="../js/admin_map.js"></script>
 </body>
 </html>
