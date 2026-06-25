@@ -206,11 +206,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 <script>
+    // 1. Define Strict Geographic Boundaries for Sri Lanka
+    // Southwest corner (lat, lon) and Northeast corner (lat, lon)
+    var southWest = L.latLng(5.9000, 79.5000);
+    var northEast = L.latLng(9.9500, 82.0000);
+    var sriLankaBounds = L.latLngBounds(southWest, northEast);
+
     var defaultLat = 6.9271;
     var defaultLng = 79.8612;
     
-    var map = L.map('map').setView([defaultLat, defaultLng], 12);
+    // 2. Initialize Map with Max Bounds and Constraint Enforcements
+    var map = L.map('map', {
+        maxBounds: sriLankaBounds,       // Lock camera inside these boundaries
+        maxBoundsViscosity: 1.0,         // Strong bounce-back effect if user tries to drag outside
+        minZoom: 7,                      // Prevent zooming out to a world view
+        maxZoom: 19
+    }).setView([defaultLat, defaultLng], 12);
     
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
@@ -219,33 +233,57 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     var marker = L.marker([defaultLat, defaultLng], {draggable: true}).addTo(map);
 
-    // Initialize Leaflet Search Engine Bar
+    // 3. Initialize Search Control Restricted to Sri Lanka (Country Code: lk)
     var geocoder = L.Control.geocoder({
-        defaultMarkGeocode: false
+        defaultMarkGeocode: false,
+        geocoder: L.Control.geocoder.nominatim({
+            geocodingQueryParams: {
+                countrycodes: 'lk' // Restricts search queries to Sri Lankan results only
+            }
+        })
     })
     .on('markgeocode', function(e) {
         var center = e.geocode.center;
-        marker.setLatLng(center);
-        map.setView(center, 15);
-        updateGeocodedMetrics(center.lat, center.lng);
+        
+        // Safety check to ensure searched location falls inside domestic boundaries
+        if (sriLankaBounds.contains(center)) {
+            marker.setLatLng(center);
+            map.setView(center, 15);
+            updateGeocodedMetrics(center.lat, center.lng);
+        } else {
+            alert("The selected location falls outside Sri Lanka regional system boundaries.");
+        }
     })
     .addTo(map);
 
+    // Trigger update on pin drag release
     marker.on('dragend', function (e) {
         var coord = marker.getLatLng();
-        updateGeocodedMetrics(coord.lat, coord.lng);
+        
+        if (sriLankaBounds.contains(coord)) {
+            updateGeocodedMetrics(coord.lat, coord.lng);
+        } else {
+            // Snap back to default center if dropped outside borders
+            marker.setLatLng([defaultLat, defaultLng]);
+            updateGeocodedMetrics(defaultLat, defaultLng);
+            alert("Cannot position administrative profiles outside Sri Lanka.");
+        }
     });
 
+    // Trigger update on map layout area click
     map.on('click', function(e) {
-        marker.setLatLng(e.latlng);
-        updateGeocodedMetrics(e.latlng.lat, e.latlng.lng);
+        if (sriLankaBounds.contains(e.latlng)) {
+            marker.setLatLng(e.latlng);
+            updateGeocodedMetrics(e.latlng.lat, e.latlng.lng);
+        }
     });
 
     function updateGeocodedMetrics(lat, lng) {
         document.getElementById('latitude').value = lat.toFixed(6);
         document.getElementById('longitude').value = lng.toFixed(6);
 
-        var reverseUrl = "https://nominatim.openstreetmap.org/reverse?format=json&lat=" + lat + "&lon=" + lng + "&zoom=18&addressdetails=1";
+        // Reverse geocoding parameter set with domestic country restriction matching system policies
+        var reverseUrl = "https://nominatim.openstreetmap.org/reverse?format=json&lat=" + lat + "&lon=" + lng + "&zoom=18&addressdetails=1&countrycodes=lk";
 
         fetch(reverseUrl)
             .then(response => response.json())
