@@ -120,24 +120,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && !isset($_POST['action_type'])) {
     <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
     <link rel="stylesheet" href="../css/style.css">
     <style>
-        /* CSS Additions for Search Engine Interface Layout */
-        .management-container { max-width: 600px; margin: 30px auto; background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #ddd; }
-        .search-row { display: flex; gap: 10px; margin-top: 10px; }
-        .search-row input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; }
-        .search-btn { background-color: #1b5e20; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .search-btn:hover { background-color: #144316; }
-        
-        .result-card { background: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 6px; padding: 20px; margin-top: 20px; }
-        .result-meta { margin-bottom: 15px; font-size: 0.95em; line-height: 1.6; }
-        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: bold; }
-        .badge-active { background-color: #e8f5e9; color: #2e7d32; }
-        .badge-deactivated { background-color: #ffebee; color: #c62828; }
-        
-        .status-action-btn { width: 100%; border: none; padding: 12px; font-size: 1em; font-weight: bold; cursor: pointer; border-radius: 4px; color: white; transition: 0.2s; }
-        .btn-red { background-color: #d32f2f; }
-        .btn-red:hover { background-color: #c62828; }
-        .btn-green { background-color: #388e3c; }
-        .btn-green:hover { background-color: #2e7d32; }
+       
     </style>
 </head>
 <body>
