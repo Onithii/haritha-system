@@ -1,5 +1,5 @@
 /**
- * Sri Lanka Boundary Spatial Geolocation Handler
+ * Sri Lanka Boundary Spatial Geolocation Handler - Stable Fixed Build
  */
 document.addEventListener("DOMContentLoaded", function () {
     // 1. Define Strict Geographic Boundaries for Sri Lanka
@@ -8,7 +8,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var sriLankaBounds = L.latLngBounds(southWest, northEast);
 
     var defaultLat = 6.9271;
-    var defaultLng = 79.8612; // Fixed from 'defaulting' to match defaultLng usage below
+    var defaultLng = 79.8612; 
     
     // 2. Initialize Map with Constraint Enforcements
     var map = L.map('map', {
@@ -24,13 +24,15 @@ document.addEventListener("DOMContentLoaded", function () {
     }).addTo(map);
 
     var marker = L.marker([defaultLat, defaultLng], {draggable: true}).addTo(map);
-
-    // 3. Initialize Search Control Restricted to Sri Lanka (Country Code: lk)
-    var geocoder = L.Control.geocoder({
+// 3. Clean Search Control Initialization (Bypasses Lowercase Object Engine Crashes)
+    var searchControl = L.Control.geocoder({
         defaultMarkGeocode: false,
-        geocoder: L.Control.geocoder.nominatim({
+        position: 'topright',
+        placeholder: 'Search for location...',
+        // Pass query filtering options directly to the default provider
+        geocoder: new L.Control.Geocoder.Nominatim({
             geocodingQueryParams: {
-                countrycodes: 'lk' // Limit autocomplete results to Sri Lankan regions
+                countrycodes: 'lk' // Constrain searches to Sri Lanka
             }
         })
     })

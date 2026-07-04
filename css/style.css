@@ -256,3 +256,24 @@ input, select {
         .btn-red:hover { background-color: #c62828; }
         .btn-green { background-color: #388e3c; }
         .btn-green:hover { background-color: #2e7d32; }
+/* 1. Prevent your global 'width: 100%' input styling from breaking the search container */
+    .leaflet-control-geocoder-form input {
+        width: 240px !important; 
+        display: inline-block !important;
+        padding: 5px 8px !important;
+        height: auto !important;
+        box-sizing: border-box !important;
+    }
+
+    /* 2. Bring the geocoder widget layer cleanly above the underlying map tile layers */
+    .leaflet-control-geocoder {
+        z-index: 1005 !important;
+        background: white !important;
+        border-radius: 4px;
+        box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+    }
+
+    /* 3. Keep Leaflet's control zones prioritized over custom map containers */
+    .leaflet-top, .leaflet-bottom {
+        z-index: 1000 !important;
+    }
