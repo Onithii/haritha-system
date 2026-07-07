@@ -28,7 +28,7 @@ if ($stmt) {
     mysqli_stmt_close($stmt);
 }
 
-// 2. Fetch Assigned Complaints matching your exact schema column: assigned_to_id
+// 2. Fetch Assigned Complaints (Show currently assigned OR historically escalated complaints)
 $complaints = [];
 $complaint_query = "SELECT c.complaint_id, c.title, c.description, c.location_description, 
                            c.latitude, c.longitude, c.created_at,
@@ -38,10 +38,12 @@ $complaint_query = "SELECT c.complaint_id, c.title, c.description, c.location_de
                     LEFT JOIN complaint_categories cc ON c.category_id = cc.category_id
                     LEFT JOIN complaint_status cs ON c.status_id = cs.status_id
                     WHERE c.assigned_to_id = ? 
+                       OR c.reply LIKE '%escalated%' 
                     ORDER BY c.created_at DESC";
 
 $comp_stmt = mysqli_prepare($conn, $complaint_query);
 if ($comp_stmt) {
+    // Binds the officer ID to ensure secure contextual loading
     mysqli_stmt_bind_param($comp_stmt, "i", $officer_id);
     mysqli_stmt_execute($comp_stmt);
     $comp_result = mysqli_stmt_get_result($comp_stmt);
@@ -127,7 +129,6 @@ if ($comp_stmt) {
     </div>
 </div>
 
-<!-- Dynamic Inlined Complaints Table Section -->
 <div class="table-section">
     <h2>Assigned Environmental Complaints</h2>
     <?php if (empty($complaints)): ?>
@@ -151,11 +152,11 @@ if ($comp_stmt) {
                     <?php 
                         $raw_status = isset($comp['status_name']) ? strtoupper(trim($comp['status_name'])) : 'PENDING';
                         
-                        if ($raw_status === 'PENDING' || $raw_status === 'NEW') {
+                        if ($raw_status === 'PENDING' || $raw_status === 'NEW' || $raw_status === 'SUBMITTED') {
                             $status_class = 'status-pending';
-                        } elseif ($raw_status === 'IN PROGRESS' || $raw_status === 'INVESTIGATING') {
+                        } elseif ($raw_status === 'IN PROGRESS' || $raw_status === 'INVESTIGATING' || $raw_status === 'ASSIGNED') {
                             $status_class = 'status-progress';
-                        } elseif ($raw_status === 'RESOLVED' || $raw_status === 'CLOSED') {
+                        } elseif ($raw_status === 'RESOLVED' || $raw_status === 'CLOSED' || $raw_status === 'COMPLETED') {
                             $status_class = 'status-resolved';
                         } else {
                             $status_class = 'status-fallback';
