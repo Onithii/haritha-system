@@ -185,10 +185,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && !isset($_POST['action_type'])) {
                 <label>Assigned System Role *</label>
                 <select name="role_id" required id="role_id">
                     <option value="">-- Select Role Assignment --</option>
-                    <option value="4">Citizen</option>
+                    <option value="1">Citizen</option>
                     <option value="2">Grama Niladhari (GN)</option>
                     <option value="3">Local Authority (LA)</option>
-                    <option value="5">Divisional Secretariat (DS)</option>
+                    <option value="4">Divisional Secretariat (DS)</option>
                 </select>
             </div>
         </div>
