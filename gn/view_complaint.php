@@ -19,44 +19,71 @@ if ($complaint_id === 0) {
 
 $message = "";
 
-// --- AJAX ENDPOINT: FILTER BY ROLE TYPE AND SEARCH AREA NAME ---
-if (isset($_GET['action']) && $_GET['action'] === 'search_area' && isset($_GET['term']) && isset($_GET['role_level'])) {
+// 2. Fetch current complaint information first (Required for Location-Based AJAX & Form processing)
+$query = "SELECT c.*, cc.category_name, cs.status_name 
+          FROM complaints c
+          LEFT JOIN complaint_categories cc ON c.category_id = cc.category_id
+          LEFT JOIN complaint_status cs ON c.status_id = cs.status_id
+          WHERE c.complaint_id = ? AND c.assigned_to_id = ? LIMIT 1";
+
+$stmt = mysqli_prepare($conn, $query);
+mysqli_stmt_bind_param($stmt, "ii", $complaint_id, $officer_id);
+mysqli_stmt_execute($stmt);
+$complaint = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+mysqli_stmt_close($stmt);
+
+if (!$complaint) {
+    die("Complaint records not found.");
+}
+
+$comp_lat = floatval($complaint['latitude']);
+$comp_lng = floatval($complaint['longitude']);
+
+
+// --- DYNAMIC AJAX ENDPOINT: GET NEAREST OFFICIAL BY SELECTED AUTHORITY ROLE ---
+if (isset($_GET['action']) && $_GET['action'] === 'get_nearest_official' && isset($_GET['role_level'])) {
     header('Content-Type: application/json');
     
-    $term = '%' . trim($_GET['term']) . '%';
-    $role_level = intval($_GET['role_level']); // 2, 3, or 4
+    $role_level = intval($_GET['role_level']); // 2 (GN), 3 (LA), or 4 (DS)
     
-    // Check both gn_division and ds_division dynamically
-    $search_q = "SELECT user_id, f_name, l_name, role_id, gn_division, ds_division 
-                 FROM users 
-                 WHERE role_id = ? 
-                 AND (gn_division LIKE ? OR ds_division LIKE ?) 
-                 LIMIT 10";
-                 
-    $stmt = mysqli_prepare($conn, $search_q);
-    mysqli_stmt_bind_param($stmt, "iss", $role_level, $term, $term);
-    mysqli_stmt_execute($stmt);
-    $result = mysqli_stmt_get_result($stmt);
-    
-    $output = [];
-    while($row = mysqli_fetch_assoc($result)) {
-        $role_label = 'Official';
-        if ($row['role_id'] == 2) $role_label = 'Grama Niladhari';
-        if ($row['role_id'] == 3) $role_label = 'Local Authority';
-        if ($row['role_id'] == 4) $role_label = 'Divisional Secretariat';
+    // Proximity calculation matching the target tier, excluding the current officer
+    $proximity_q = "SELECT user_id, f_name, l_name, role_id, gn_division, ds_division,
+                    (6371 * ACOS(COS(RADIANS(?)) * COS(RADIANS(office_latitude)) * COS(RADIANS(office_longitude) - RADIANS(?)) + SIN(RADIANS(?)) * SIN(RADIANS(office_latitude)))) AS distance 
+                    FROM users 
+                    WHERE role_id = ? 
+                    AND user_id != ? 
+                    AND office_latitude IS NOT NULL 
+                    AND office_longitude IS NOT NULL
+                    ORDER BY distance ASC LIMIT 1";
 
-        $output[] = [
-            'user_id' => $row['user_id'],
-            'name' => $row['f_name'] . ' ' . $row['l_name'],
+    $p_stmt = mysqli_prepare($conn, $proximity_q);
+    mysqli_stmt_bind_param($p_stmt, "dddii", $comp_lat, $comp_lng, $comp_lat, $role_level, $officer_id);
+    mysqli_stmt_execute($p_stmt);
+    $closest_auth = mysqli_fetch_assoc(mysqli_stmt_get_result($p_stmt));
+    mysqli_stmt_close($p_stmt);
+    
+    if ($closest_auth) {
+        $role_label = 'Official';
+        if ($closest_auth['role_id'] == 2) $role_label = 'Grama Niladhari';
+        if ($closest_auth['role_id'] == 3) $role_label = 'Local Authority';
+        if ($closest_auth['role_id'] == 4) $role_label = 'Divisional Secretariat';
+
+        echo json_encode([
+            'success' => true,
+            'user_id' => $closest_auth['user_id'],
+            'name' => $closest_auth['f_name'] . ' ' . $closest_auth['l_name'],
             'role_title' => $role_label,
-            'area_name' => !empty($row['gn_division']) ? $row['gn_division'] : $row['ds_division']
-        ];
+            'area_name' => !empty($closest_auth['gn_division']) ? $closest_auth['gn_division'] : $closest_auth['ds_division'],
+            'distance' => round($closest_auth['distance'], 2)
+        ]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'No nearby official found for this tier.']);
     }
-    echo json_encode($output);
     exit();
 }
 
-// 2. Handle Action Submissions (Form Submissions)
+
+// 3. Handle Action Submissions (Form Submissions)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action_type'])) {
         
@@ -80,64 +107,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $target_officer_id = intval($_POST['target_officer_id']);
             
             if ($target_officer_id > 0) {
+                // Assign to new officer and set status back to ASSIGNED (status_id = 2)
                 $escalate_q = "UPDATE complaints SET assigned_to_id = ?, status_id = 2, updated_at = NOW() WHERE complaint_id = ?";
                 $stmt = mysqli_prepare($conn, $escalate_q);
                 mysqli_stmt_bind_param($stmt, "ii", $target_officer_id, $complaint_id);
                 
                 if (mysqli_stmt_execute($stmt)) {
-                    $message = "<div class='alert success'>Complaint successfully escalated.</div>";
+                    mysqli_stmt_close($stmt);
+                    
+                    // Route directly back to the dashboard to avoid ownership-mismatch errors
+                    header("Location: gn_dash.php");
+                    exit();
                 } else {
                     $message = "<div class='alert error'>Failed to process escalation assignment.</div>";
+                    mysqli_stmt_close($stmt);
                 }
-                mysqli_stmt_close($stmt);
             } else {
-                $message = "<div class='alert error'>Please select an official from the search dropdown.</div>";
+                $message = "<div class='alert error'>Please select an authority tier level first.</div>";
             }
         }
     }
-}
-
-// 3. Fetch current complaint information
-$query = "SELECT c.*, cc.category_name, cs.status_name 
-          FROM complaints c
-          LEFT JOIN complaint_categories cc ON c.category_id = cc.category_id
-          LEFT JOIN complaint_status cs ON c.status_id = cs.status_id
-          WHERE c.complaint_id = ? AND c.assigned_to_id = ? LIMIT 1";
-
-$stmt = mysqli_prepare($conn, $query);
-mysqli_stmt_bind_param($stmt, "ii", $complaint_id, $officer_id);
-mysqli_stmt_execute($stmt);
-$complaint = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
-mysqli_stmt_close($stmt);
-
-if (!$complaint) {
-    die("Complaint records not found.");
-}
-
-// 4. AUTOMATIC PROXIMITY SEARCH: Nearest official breakdown
-$comp_lat = floatval($complaint['latitude']);
-$comp_lng = floatval($complaint['longitude']);
-
-$proximity_q = "SELECT user_id, f_name, l_name, role_id, gn_division, ds_division,
-                (6371 * ACOS(COS(RADIANS(?)) * COS(RADIANS(office_latitude)) * COS(RADIANS(office_longitude) - RADIANS(?)) + SIN(RADIANS(?)) * SIN(RADIANS(office_latitude)))) AS distance 
-                FROM users 
-                WHERE role_id IN (2, 3, 4) 
-                AND user_id != ? 
-                AND office_latitude IS NOT NULL 
-                AND office_longitude IS NOT NULL
-                ORDER BY distance ASC LIMIT 1";
-
-$p_stmt = mysqli_prepare($conn, $proximity_q);
-mysqli_stmt_bind_param($p_stmt, "dddi", $comp_lat, $comp_lng, $comp_lat, $officer_id);
-mysqli_stmt_execute($p_stmt);
-$closest_auth = mysqli_fetch_assoc(mysqli_stmt_get_result($p_stmt));
-mysqli_stmt_close($p_stmt);
-
-$closest_role_label = 'Official';
-if ($closest_auth) {
-    if ($closest_auth['role_id'] == 2) $closest_role_label = 'Grama Niladhari';
-    if ($closest_auth['role_id'] == 3) $closest_role_label = 'Local Authority';
-    if ($closest_auth['role_id'] == 4) $closest_role_label = 'Divisional Secretariat';
 }
 ?>
 <!DOCTYPE html>
@@ -156,7 +145,6 @@ if ($closest_auth) {
         h2, h3 { color: #e65100; margin-top: 0; border-bottom: 2px solid #ffccbc; padding-bottom: 8px; }
         .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
         .meta-item b { color: #555; }
-        .evidence-img { max-width: 100%; border-radius: 8px; border: 1px solid #ddd; margin-top: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .alert { padding: 12px; margin-bottom: 15px; border-radius: 5px; font-weight: bold; }
         .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
@@ -165,16 +153,9 @@ if ($closest_auth) {
         button { background-color: #e65100; color: white; border: none; padding: 12px 20px; cursor: pointer; border-radius: 5px; width: 100%; font-weight: bold; font-size: 14px; margin-top: 15px; text-transform: uppercase; }
         button:hover { background-color: #b33600; }
         
-        /* Layout Fixes for Autocomplete Overlays */
-        .proximity-suggestion { background-color: #fff3e0; border-left: 4px solid #ff9800; padding: 12px; margin: 10px 0; border-radius: 4px; }
         .radio-group { display: flex; gap: 15px; margin: 10px 0; background: #fafafa; padding: 10px; border-radius: 5px; border: 1px dashed #ccc; }
         .radio-option { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: bold; cursor: pointer; color: #e65100; }
-        .search-container { position: relative; margin-top: 15px; }
-        
-        /* CRITICAL POSITIONING TO SHOW DROPDOWN ON TOP */
-        .autocomplete-suggestions { border: 1px solid #b33600; background: #ffffff !important; max-height: 200px; overflow-y: auto; position: absolute; width: 100%; z-index: 99999 !important; box-shadow: 0 5px 15px rgba(0,0,0,0.3); border-radius: 4px; left: 0; display: block; }
-        .suggestion-item { padding: 12px; cursor: pointer; border-bottom: 1px solid #eee; color: #333 !important; text-align: left; }
-        .suggestion-item:hover { background-color: #ffe0b2 !important; color: #b33600 !important; }
+        .proximity-info { font-size: 12px; margin-top: 4px; color: #757575; font-style: italic; }
     </style>
 </head>
 <body>
@@ -185,7 +166,6 @@ if ($closest_auth) {
 </div>
 
 <div class="wrapper">
-    <!-- Left Panel Info -->
     <div class="left-panel">
         <?php echo $message; ?>
         <div class="content-box">
@@ -201,7 +181,6 @@ if ($closest_auth) {
         </div>
     </div>
 
-    <!-- Right Escalation Form Side -->
     <div class="right-panel">
         <div class="content-box">
             <h3>Manage Progress</h3>
@@ -228,19 +207,14 @@ if ($closest_auth) {
 
                 <label>Select Target Authority Level</label>
                 <div class="radio-group">
-                    <label class="radio-option"><input type="radio" name="authority_level" value="2" onclick="handleLevelSelection()"> GN</label>
-                    <label class="radio-option"><input type="radio" name="authority_level" value="3" onclick="handleLevelSelection()"> Local Authority</label>
-                    <label class="radio-option"><input type="radio" name="authority_level" value="4" onclick="handleLevelSelection()"> DS</label>
-                </div>
-
-                <div id="search_field_wrapper" style="display: none;" class="search-container">
-                    <label for="area_search" id="search_label_text">Search Area Division</label>
-                    <input type="text" id="area_search" placeholder="Type area name..." autocomplete="off">
-                    <div id="suggestions_box" class="autocomplete-suggestions" style="display: none;"></div>
+                    <label class="radio-option"><input type="radio" name="authority_level" value="2" onclick="fetchNearestOfficial(2)"> GN</label>
+                    <label class="radio-option"><input type="radio" name="authority_level" value="3" onclick="fetchNearestOfficial(3)"> Local Authority</label>
+                    <label class="radio-option"><input type="radio" name="authority_level" value="4" onclick="fetchNearestOfficial(4)"> DS</label>
                 </div>
 
                 <label style="margin-top: 15px;">Selected Recipient Profile</label>
-                <input type="text" id="selected_auth_display" value="" readonly style="background-color: #eee;">
+                <input type="text" id="selected_auth_display" value="Please select authority tier..." readonly style="background-color: #eee; font-weight: bold; color: #444;">
+                <div id="proximity_distance" class="proximity-info"></div>
 
                 <button type="submit" style="background-color: #d84315;">Confirm Escalation</button>
             </form>
@@ -249,69 +223,34 @@ if ($closest_auth) {
 </div>
 
 <script>
-function handleLevelSelection() {
-    document.getElementById('search_field_wrapper').style.display = 'block';
-    document.getElementById('area_search').value = '';
-    document.getElementById('target_officer_id').value = '';
-    document.getElementById('selected_auth_display').value = '';
-    document.getElementById('suggestions_box').style.display = 'none';
+function fetchNearestOfficial(roleLevel) {
+    let displayBox = document.getElementById('selected_auth_display');
+    let distanceBox = document.getElementById('proximity_distance');
+    let targetIdInput = document.getElementById('target_officer_id');
     
-    let selectedLevel = document.querySelector('input[name="authority_level"]:checked').value;
-    let textLabel = "Search Division";
-    if(selectedLevel == 2) textLabel = "Search GN Division Name";
-    if(selectedLevel == 3) textLabel = "Search Local Authority Area";
-    if(selectedLevel == 4) textLabel = "Search DS Division Name";
-    document.getElementById('search_label_text').innerText = textLabel;
-}
+    displayBox.value = "Locating nearest option spatial coordinates...";
+    distanceBox.innerText = "";
+    targetIdInput.value = "";
 
-document.getElementById('area_search').addEventListener('input', function() {
-    let term = this.value.trim();
-    let suggestionsBox = document.getElementById('suggestions_box');
-    let selectedRadio = document.querySelector('input[name="authority_level"]:checked');
-    
-    if (!selectedRadio) return;
-    let roleLevel = selectedRadio.value;
-    
-    if (term.length < 1) {
-        suggestionsBox.style.display = 'none';
-        return;
-    }
-
-    let url = `view_complaint.php?id=<?php echo $complaint_id; ?>&action=search_area&term=${encodeURIComponent(term)}&role_level=${roleLevel}`;
+    let url = `view_complaint.php?id=<?php echo $complaint_id; ?>&action=get_nearest_official&role_level=${roleLevel}`;
     
     fetch(url)
         .then(response => response.json())
         .then(data => {
-            console.log("AJAX Data Received:", data); // View your web console log to check results!
-            suggestionsBox.innerHTML = '';
-            
-            if (data.length > 0) {
-                data.forEach(item => {
-                    let div = document.createElement('div');
-                    div.className = 'suggestion-item';
-                    div.innerHTML = `<b>${item.area_name}</b> - ${item.name} <small>(${item.role_title})</small>`;
-                    
-                    div.addEventListener('click', function() {
-                        document.getElementById('target_officer_id').value = item.user_id;
-                        document.getElementById('selected_auth_display').value = `${item.name} [${item.role_title}]`;
-                        document.getElementById('area_search').value = item.area_name;
-                        suggestionsBox.style.display = 'none';
-                    });
-                    suggestionsBox.appendChild(div);
-                });
-                suggestionsBox.style.display = 'block';
+            if (data.success) {
+                targetIdInput.value = data.user_id;
+                displayBox.value = `${data.name} [${data.role_title}] — ${data.area_name}`;
+                distanceBox.innerText = `📍 Closest available choice located approximately ${data.distance} km away from incident site.`;
             } else {
-                suggestionsBox.style.display = 'none';
+                displayBox.value = "No official record found for this tier level.";
+                distanceBox.innerText = "";
             }
         })
-        .catch(err => console.error("Fetch failure:", err));
-});
-
-document.addEventListener('click', function(e) {
-    if (e.target.id !== 'area_search') {
-        document.getElementById('suggestions_box').style.display = 'none';
-    }
-});
+        .catch(err => {
+            console.error("Proximity Fetch Failure:", err);
+            displayBox.value = "Error executing proximity mapping calculations.";
+        });
+}
 </script>
 </body>
 </html>
