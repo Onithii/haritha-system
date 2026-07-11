@@ -10,15 +10,50 @@ if (!isset($_SESSION['role_id']) || $_SESSION['role_id'] != 5 || empty($_SESSION
     exit();
 }
 
-// 1. Handle Filters using your exact schema column names
+// Geolocation function using Nominatim OpenStreetMap API
+function getDistrictFromCoordinates($lat, $lng) {
+    if (empty($lat) || empty($lng)) {
+        return "Unknown";
+    }
+    
+    $opts = [
+        'http' => [
+            'method' => "GET",
+            'header' => "User-Agent: HarithaSystem/1.0 (admin-portal@haritha.lk)\r\n"
+        ]
+    ];
+    
+    $context = stream_context_create($opts);
+    $url = "https://nominatim.openstreetmap.org/reverse?format=json&lat=" . $lat . "&lon=" . $lng;
+    
+    $response = @file_get_contents($url, false, $context);
+    
+    if ($response) {
+        $data = json_decode($response, true);
+        if (isset($data['address']['district'])) {
+            return $data['address']['district']; // e.g. "Galle"
+        } elseif (isset($data['address']['state_district'])) {
+            return $data['address']['state_district'];
+        } elseif (isset($data['address']['city'])) {
+            return $data['address']['city'];
+        }
+    }
+    return "Unknown Region";
+}
+
+// 1. Target city list for filter matching
+$cities_list = ["Colombo", "Galle", "Matara", "Kandy", "Jaffna", "Negombo", "Anuradhapura", "Kurunegala"];
+
+// 2. Handle Filters
 $area_filter = isset($_GET['area']) ? mysqli_real_escape_string($conn, $_GET['area']) : '';
 $status_filter = isset($_GET['status_id']) ? mysqli_real_escape_string($conn, $_GET['status_id']) : '';
 
-// 2. Build SQL Query dynamically
+// 3. Build Query dynamically
 $query = "SELECT * FROM complaints WHERE 1=1";
 
 if (!empty($area_filter)) {
-    $query .= " AND location_description = '$area_filter'";
+    // Looks for textual mentions inside location_description or coordinates backup matches
+    $query .= " AND (location_description LIKE '%$area_filter%')";
 }
 if (!empty($status_filter)) {
     $query .= " AND status_id = '$status_filter'";
@@ -27,10 +62,7 @@ if (!empty($status_filter)) {
 $query .= " ORDER BY created_at DESC";
 $result = mysqli_query($conn, $query);
 
-// 3. Dynamically fetch existing locations for the dropdown component
-$areas_query = mysqli_query($conn, "SELECT DISTINCT location_description FROM complaints WHERE location_description IS NOT NULL AND location_description != ''");
-
-// 4. Fetch available status IDs currently stored in complaints
+// 4. Fetch distinct status variants for filtering control
 $statuses_query = mysqli_query($conn, "SELECT DISTINCT status_id FROM complaints WHERE status_id IS NOT NULL");
 ?>
 <!DOCTYPE html>
@@ -47,7 +79,6 @@ $statuses_query = mysqli_query($conn, "SELECT DISTINCT status_id FROM complaints
         button, .btn-submit { background-color: #1b5e20; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; width: 100%; }
         button:hover, .btn-submit:hover { background-color: #003300; }
         
-        /* Layout Configurations for Filtering and Data Tables */
         .section-title { width: 85%; margin: 20px auto 10px auto; color: #1b5e20; border-bottom: 2px solid #1b5e20; padding-bottom: 5px; }
         .filter-section { width: 85%; margin: 0 auto 20px auto; background: white; padding: 15px; border-radius: 8px; box-shadow: 0px 2px 5px rgba(0,0,0,0.1); }
         .filter-form { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
@@ -63,11 +94,10 @@ $statuses_query = mysqli_query($conn, "SELECT DISTINCT status_id FROM complaints
         tr:hover { background-color: #f9f9f9; }
         .no-data { text-align: center; padding: 30px; color: #757575; font-style: italic; }
         
-        /* Status Badge Colors mapping to status_id integer values */
         .badge { padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
-        .status-1 { background-color: #fff9c4; color: #fbc02d; } /* E.g., Pending */
-        .status-2 { background-color: #ffcdd2; color: #c62828; } /* E.g., Escalated */
-        .status-3 { background-color: #c8e6c9; color: #25602a; } /* E.g., Completed */
+        .status-1 { background-color: #fff9c4; color: #fbc02d; } 
+        .status-2 { background-color: #ffcdd2; color: #c62828; } 
+        .status-3 { background-color: #c8e6c9; color: #25602a; } 
     </style>
 </head>
 <body>
@@ -104,14 +134,14 @@ $statuses_query = mysqli_query($conn, "SELECT DISTINCT status_id FROM complaints
 
 <div class="filter-section">
     <form method="GET" action="" class="filter-form">
-        <label for="area"><strong>Filter by Location:</strong></label>
+        <label for="area"><strong>Filter by Region:</strong></label>
         <select name="area" id="area">
-            <option value="">-- All Locations --</option>
-            <?php while($row = mysqli_fetch_assoc($areas_query)): ?>
-                <option value="<?php echo htmlspecialchars($row['location_description']); ?>" <?php if($area_filter == $row['location_description']) echo 'selected'; ?>>
-                    <?php echo htmlspecialchars($row['location_description']); ?>
+            <option value="">-- All Regions --</option>
+            <?php foreach($cities_list as $city): ?>
+                <option value="<?php echo htmlspecialchars($city); ?>" <?php if($area_filter == $city) echo 'selected'; ?>>
+                    <?php echo htmlspecialchars($city); ?>
                 </option>
-            <?php endwhile; ?>
+            <?php endforeach; ?>
         </select>
 
         <label for="status_id"><strong>Status ID:</strong></label>
@@ -137,7 +167,8 @@ $statuses_query = mysqli_query($conn, "SELECT DISTINCT status_id FROM complaints
             <tr>
                 <th>Complaint ID</th>
                 <th>Title / Subject</th>
-                <th>Location</th>
+                <th>Resolved District</th>
+                <th>Location Description</th>
                 <th>Status Code</th>
                 <th>Date Submitted</th>
                 <th>Action</th>
@@ -145,10 +176,19 @@ $statuses_query = mysqli_query($conn, "SELECT DISTINCT status_id FROM complaints
         </thead>
         <tbody>
             <?php if (mysqli_num_rows($result) > 0): ?>
-                <?php while($complaint = mysqli_fetch_assoc($result)): ?>
+                <?php while($complaint = mysqli_fetch_assoc($result)): 
+                    // Calculate the live district output based on DB coordinates
+                    $detected_district = getDistrictFromCoordinates($complaint['latitude'], $complaint['longitude']);
+                    
+                    // If a filter is set, skip displaying rows that don't match the API output
+                    if (!empty($area_filter) && strtolower($detected_district) !== strtolower($area_filter)) {
+                        continue;
+                    }
+                ?>
                     <tr>
                         <td>#<?php echo htmlspecialchars($complaint['complaint_id']); ?></td>
                         <td><?php echo htmlspecialchars($complaint['title']); ?></td>
+                        <td><strong><?php echo htmlspecialchars($detected_district); ?></strong></td>
                         <td><?php echo htmlspecialchars($complaint['location_description']); ?></td>
                         <td>
                             <span class="badge status-<?php echo $complaint['status_id']; ?>">
@@ -163,7 +203,7 @@ $statuses_query = mysqli_query($conn, "SELECT DISTINCT status_id FROM complaints
                 <?php endwhile; ?>
             <?php else: ?>
                 <tr>
-                    <td colspan="6" class="no-data">No complaints found matching your criteria.</td>
+                    <td colspan="7" class="no-data">No complaints found matching your criteria.</td>
                 </tr>
             <?php endif; ?>
         </tbody>

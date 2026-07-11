@@ -30,6 +30,7 @@ if (isset($_POST['submit_complaint'])) {
     $category_id          = intval($_POST['category_id']);
     $description          = trim($_POST['description']);
     $location_description = trim($_POST['location_description']);
+    $district             = isset($_POST['district']) ? trim($_POST['district']) : 'Unknown District';
     
     $latitude  = (isset($_POST['latitude']) && $_POST['latitude'] !== '') ? floatval($_POST['latitude']) : null;
     $longitude = (isset($_POST['longitude']) && $_POST['longitude'] !== '') ? floatval($_POST['longitude']) : null;
@@ -71,17 +72,17 @@ if (isset($_POST['submit_complaint'])) {
             $sql = "INSERT INTO complaints (
                         citizen_id, category_id, status_id, title, 
                         description, image_path, latitude, longitude, 
-                        location_description
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        location_description, district
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             
             $stmt = mysqli_prepare($conn, $sql);
             if ($stmt) {
                 mysqli_stmt_bind_param(
                     $stmt, 
-                    "iiissssss", 
+                    "iiisssssss", 
                     $citizen_id, $category_id, $status_id, $title, 
                     $description, $image_path, $latitude, $longitude, 
-                    $location_description
+                    $location_description, $district
                 );
 
                 if (mysqli_stmt_execute($stmt)) {
@@ -139,14 +140,13 @@ if (isset($_POST['submit_complaint'])) {
     <title>Submit Environmental Complaint</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
-    
     <link rel="stylesheet" href="../css/style.css">
 </head>
 <body>
 
 <div class="form-container">
     <h2>Report Environmental Issue</h2>
-    <div id="map"></div>
+    <div id="map" style="height: 350px; margin-bottom: 20px; border-radius: 8px; border: 1px solid #ccc; width: 100%;"></div>
 
     <?php if (!empty($error)): ?>
         <div class="alert alert-error"><?php echo htmlspecialchars($error); ?></div>
@@ -189,26 +189,31 @@ if (isset($_POST['submit_complaint'])) {
             <input type="text" id="location_description" name="location_description" placeholder="e.g., Near the 4th milestone, opposite the school">
         </div>
 
-        <div class="geo-group">
-            <div class="form-group">
-                <label for="latitude">Latitude (Optional)</label>
+        <div class="geo-group" style="display: flex; gap: 15px; margin-bottom: 15px;">
+            <div class="form-group" style="flex: 1;">
+                <label for="latitude">Latitude</label>
                 <input type="text" id="latitude" name="latitude" placeholder="e.g., 6.9271" readonly>
             </div>
-            <div class="form-group">
-                <label for="longitude">Longitude (Optional)</label>
+            <div class="form-group" style="flex: 1;">
+                <label for="longitude">Longitude</label>
                 <input type="text" id="longitude" name="longitude" placeholder="e.g., 79.8612" readonly>
             </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 20px;">
+            <label for="district">Detected District</label>
+            <input type="text" id="district" name="district" placeholder="Click on the map to auto-fill district..." readonly style="background-color: #e8f5e9; font-weight: bold; color: #1b5e20;">
         </div>
 
         <button type="submit" name="submit_complaint">Submit Report</button>
     </form>
 
-    <a href="citizen_dash.php" class="back-link">← Return to Dashboard</a>
+    <a href="citizen_dash.php" class="back-link" style="display: block; margin-top: 20px; text-decoration: none; color: #1b5e20;">← Return to Dashboard</a>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
-
 <script src="../js/map_handler.js"></script>
+
 </body>
 </html>

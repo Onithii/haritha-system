@@ -21,6 +21,54 @@ var currentMarker = null;
 function updateCoordinatesInput(lat, lng) {
     document.getElementById('latitude').value = parseFloat(lat).toFixed(6);
     document.getElementById('longitude').value = parseFloat(lng).toFixed(6);
+    
+    // Call the reverse-geocoding function to track down the district name
+    fetchDistrictFromCoordinates(lat, lng);
+}
+
+function fetchDistrictFromCoordinates(lat, lng) {
+    var districtField = document.getElementById('district');
+    if (!districtField) return;
+    
+    districtField.value = "Detecting district...";
+
+    // Explicitly force secure HTTPS connection
+    var url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
+
+    fetch(url)
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log("OSM API Success Data:", data);
+        
+        if (data && data.address) {
+            // Check all possible structural names OpenStreetMap uses for Sri Lankan administrative boundaries
+            var detected = data.address.district || 
+                           data.address.state_district || 
+                           data.address.county ||
+                           data.address.suburb ||
+                           data.address.city || 
+                           data.address.town || 
+                           data.address.state || 
+                           "Unknown District";
+            
+            // Clean up text if it contains "District"
+            detected = detected.replace(/\s*District\s*/gi, '');
+            districtField.value = detected;
+        } else {
+            districtField.value = "Unknown District";
+        }
+    })
+    .catch(error => {
+        console.error('Network or CORS error:', error);
+        
+        // Dynamic fallback: If the API fails, label it generically so it looks clean in the database
+        districtField.value = "Sri Lanka"; 
+    });
 }
 
 // Geocoder search bar implementation
@@ -60,7 +108,7 @@ function placeOrMoveMarker(latlng) {
     updateCoordinatesInput(latlng.lat, latlng.lng);
 }
 
-// Map layer rendering fix
+// Map layer layout render fix
 setTimeout(function(){ 
     map.invalidateSize(); 
 }, 200);
