@@ -19,9 +19,27 @@ $districts_list = [
     "Moneragala", "Ratnapura", "Kegalle"
 ];
 
+// Master Status List Mapping for display names and badges
+$status_map = [
+    1 => "SUBMITTED",
+    2 => "ASSIGNED",
+    3 => "IN_PROGRESS",
+    4 => "COMPLETED",
+    5 => "ESCALATED",
+    6 => "REJECTED"
+];
+
 // 2. Handle Filters
 $area_filter = isset($_GET['area']) ? mysqli_real_escape_string($conn, $_GET['area']) : '';
 $status_filter = isset($_GET['status_id']) ? mysqli_real_escape_string($conn, $_GET['status_id']) : '';
+
+// Helper function to safely render badges inside structural loops
+function renderStatusBadge($status_id, $status_map) {
+    $name = isset($status_map[$status_id]) ? $status_map[$status_id] : "UNKNOWN";
+    // Normalize values above 3 to fall back cleanly onto style colors if needed
+    $class_id = ($status_id <= 3) ? $status_id : (($status_id == 4 || $status_id == 5) ? 3 : 2);
+    return '<span class="badge status-' . $class_id . '">' . htmlspecialchars($name) . '</span>';
+}
 
 // 3. Handle AJAX "Load More" Request
 if (isset($_GET['ajax_load'])) {
@@ -37,17 +55,19 @@ if (isset($_GET['ajax_load'])) {
     if (mysqli_num_rows($result) > 0) {
         while($complaint = mysqli_fetch_assoc($result)) {
             $district = !empty($complaint['district']) ? htmlspecialchars($complaint['district']) : 'Not Assigned';
+            $badge = renderStatusBadge($complaint['status_id'], $status_map);
+            
             echo '<tr>
                     <td>#' . htmlspecialchars($complaint['complaint_id']) . '</td>
                     <td>' . htmlspecialchars($complaint['title']) . '</td>
                     <td><strong>' . $district . '</strong></td>
-                    <td><span class="badge status-' . $complaint['status_id'] . '">ID: ' . htmlspecialchars($complaint['status_id']) . '</span></td>
+                    <td>' . $badge . '</td>
                     <td>' . date('Y-m-d', strtotime($complaint['created_at'])) . '</td>
                     <td><a href="view_complaint_details.php?id=' . $complaint['complaint_id'] . '" style="color: #1b5e20; font-weight: bold; text-decoration: none;">View</a></td>
                   </tr>';
         }
     }
-    exit(); // Stop parsing the rest of the HTML template during AJAX calls
+    exit();
 }
 
 // 4. Base Initial Query (Gets first 5 rows)
@@ -57,15 +77,12 @@ if (!empty($status_filter)) { $query .= " AND status_id = '$status_filter'"; }
 $query .= " ORDER BY created_at DESC LIMIT 5 OFFSET 0";
 $result = mysqli_query($conn, $query);
 
-// 5. Total count for determining if we should show the button at all
+// 5. Total count for determining pagination limits
 $count_query = "SELECT COUNT(*) as total FROM complaints WHERE 1=1";
 if (!empty($area_filter)) { $count_query .= " AND district = '$area_filter'"; }
 if (!empty($status_filter)) { $count_query .= " AND status_id = '$status_filter'"; }
 $count_res = mysqli_fetch_assoc(mysqli_query($conn, $count_query));
 $total_records = $count_res['total'];
-
-// Fetch distinct statuses for filtering control
-$statuses_query = mysqli_query($conn, "SELECT DISTINCT status_id FROM complaints WHERE status_id IS NOT NULL");
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -84,7 +101,7 @@ $statuses_query = mysqli_query($conn, "SELECT DISTINCT status_id FROM complaints
         .section-title { width: 85%; margin: 20px auto 10px auto; color: #1b5e20; border-bottom: 2px solid #1b5e20; padding-bottom: 5px; }
         .filter-section { width: 85%; margin: 0 auto 20px auto; background: white; padding: 15px; border-radius: 8px; box-shadow: 0px 2px 5px rgba(0,0,0,0.1); }
         .filter-form { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
-        .filter-form select { padding: 8px; border-radius: 5px; border: 1px solid #ccc; min-width: 150px; }
+        .filter-form select { padding: 8px; border-radius: 5px; border: 1px solid #ccc; min-width: 170px; }
         .filter-form .btn-submit { width: auto; padding: 8px 20px; }
         .filter-form .btn-reset { background-color: #757575; color: white; padding: 8px 15px; text-decoration: none; border-radius: 5px; font-size: 14px; }
         .filter-form .btn-reset:hover { background-color: #424242; }
@@ -96,7 +113,7 @@ $statuses_query = mysqli_query($conn, "SELECT DISTINCT status_id FROM complaints
         tr:hover { background-color: #f9f9f9; }
         .no-data { text-align: center; padding: 30px; color: #757575; font-style: italic; }
         
-        .badge { padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+        .badge { padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
         .status-1 { background-color: #fff9c4; color: #fbc02d; } 
         .status-2 { background-color: #ffcdd2; color: #c62828; } 
         .status-3 { background-color: #c8e6c9; color: #25602a; } 
@@ -150,14 +167,14 @@ $statuses_query = mysqli_query($conn, "SELECT DISTINCT status_id FROM complaints
             <?php endforeach; ?>
         </select>
 
-        <label for="status_id"><strong>Status ID:</strong></label>
+        <label for="status_id"><strong>Filter by Status:</strong></label>
         <select name="status_id" id="status_id">
             <option value="">-- All Statuses --</option>
-            <?php while($row = mysqli_fetch_assoc($statuses_query)): ?>
-                <option value="<?php echo htmlspecialchars($row['status_id']); ?>" <?php if($status_filter == $row['status_id']) echo 'selected'; ?>>
-                    Status Code: <?php echo htmlspecialchars($row['status_id']); ?>
+            <?php foreach($status_map as $id => $name): ?>
+                <option value="<?php echo $id; ?>" <?php if($status_filter == $id) echo 'selected'; ?>>
+                    <?php echo htmlspecialchars($name); ?>
                 </option>
-            <?php endwhile; ?>
+            <?php endforeach; ?>
         </select>
 
         <button type="submit" class="btn-submit">Apply Filters</button>
@@ -174,7 +191,7 @@ $statuses_query = mysqli_query($conn, "SELECT DISTINCT status_id FROM complaints
                 <th>Complaint ID</th>
                 <th>Title / Subject</th>
                 <th>District</th>
-                <th>Status Code</th>
+                <th>Status</th>
                 <th>Date Submitted</th>
                 <th>Action</th>
             </tr>
@@ -191,8 +208,12 @@ $statuses_query = mysqli_query($conn, "SELECT DISTINCT status_id FROM complaints
                             </strong>
                         </td>
                         <td>
-                            <span class="badge status-<?php echo $complaint['status_id']; ?>">
-                                ID: <?php echo htmlspecialchars($complaint['status_id']); ?>
+                            <?php 
+                            $c_status = $complaint['status_id'];
+                            $class_id = ($c_status <= 3) ? $c_status : (($c_status == 4 || $c_status == 5) ? 3 : 2);
+                            ?>
+                            <span class="badge status-<?php echo $class_id; ?>">
+                                <?php echo htmlspecialchars(isset($status_map[$c_status]) ? $status_map[$c_status] : 'UNKNOWN'); ?>
                             </span>
                         </td>
                         <td><?php echo date('Y-m-d', strtotime($complaint['created_at'])); ?></td>
@@ -222,7 +243,6 @@ document.getElementById('load-more-btn').addEventListener('click', function() {
     var currentOffset = parseInt(btn.getAttribute('data-offset'));
     var totalRecords = parseInt(btn.getAttribute('data-total'));
     
-    // Track active filter parameters to ensure we load matching data
     var urlParams = new URLSearchParams(window.location.search);
     urlParams.set('ajax_load', '1');
     urlParams.set('offset', currentOffset);
