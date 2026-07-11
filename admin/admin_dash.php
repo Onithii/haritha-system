@@ -142,7 +142,6 @@ $statuses_query = mysqli_query($conn, "SELECT DISTINCT status_id FROM complaints
                 <th>Complaint ID</th>
                 <th>Title / Subject</th>
                 <th>District</th>
-                <th>Location Description</th>
                 <th>Status Code</th>
                 <th>Date Submitted</th>
                 <th>Action</th>
@@ -159,7 +158,6 @@ $statuses_query = mysqli_query($conn, "SELECT DISTINCT status_id FROM complaints
                                 <?php echo htmlspecialchars(!empty($complaint['district']) ? $complaint['district'] : 'Not Assigned'); ?>
                             </strong>
                         </td>
-                        <td><?php echo htmlspecialchars($complaint['location_description']); ?></td>
                         <td>
                             <span class="badge status-<?php echo $complaint['status_id']; ?>">
                                 ID: <?php echo htmlspecialchars($complaint['status_id']); ?>
@@ -173,7 +171,7 @@ $statuses_query = mysqli_query($conn, "SELECT DISTINCT status_id FROM complaints
                 <?php endwhile; ?>
             <?php else: ?>
                 <tr>
-                    <td colspan="7" class="no-data">No complaints found matching your criteria.</td>
+                    <td colspan="6" class="no-data">No complaints found matching your criteria.</td>
                 </tr>
             <?php endif; ?>
         </tbody>
