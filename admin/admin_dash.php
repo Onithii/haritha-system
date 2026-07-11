@@ -10,50 +10,24 @@ if (!isset($_SESSION['role_id']) || $_SESSION['role_id'] != 5 || empty($_SESSION
     exit();
 }
 
-// Geolocation function using Nominatim OpenStreetMap API
-function getDistrictFromCoordinates($lat, $lng) {
-    if (empty($lat) || empty($lng)) {
-        return "Unknown";
-    }
-    
-    $opts = [
-        'http' => [
-            'method' => "GET",
-            'header' => "User-Agent: HarithaSystem/1.0 (admin-portal@haritha.lk)\r\n"
-        ]
-    ];
-    
-    $context = stream_context_create($opts);
-    $url = "https://nominatim.openstreetmap.org/reverse?format=json&lat=" . $lat . "&lon=" . $lng;
-    
-    $response = @file_get_contents($url, false, $context);
-    
-    if ($response) {
-        $data = json_decode($response, true);
-        if (isset($data['address']['district'])) {
-            return $data['address']['district']; // e.g. "Galle"
-        } elseif (isset($data['address']['state_district'])) {
-            return $data['address']['state_district'];
-        } elseif (isset($data['address']['city'])) {
-            return $data['address']['city'];
-        }
-    }
-    return "Unknown Region";
-}
-
-// 1. Target city list for filter matching
-$cities_list = ["Colombo", "Galle", "Matara", "Kandy", "Jaffna", "Negombo", "Anuradhapura", "Kurunegala"];
+// 1. Sri Lankan Districts list for clean filter matching
+$districts_list = [
+    "Colombo", "Gampaha", "Kalutara", "Kandy", "Matale", "Nuwara Eliya", 
+    "Galle", "Matara", "Hambantota", "Jaffna", "Kilinochchi", "Mannar", 
+    "Vavuniya", "Mullaitivu", "Batticaloa", "Ampara", "Trincomalee", 
+    "Kurunegala", "Puttalam", "Anuradhapura", "Polonnaruwa", "Badulla", 
+    "Moneragala", "Ratnapura", "Kegalle"
+];
 
 // 2. Handle Filters
 $area_filter = isset($_GET['area']) ? mysqli_real_escape_string($conn, $_GET['area']) : '';
 $status_filter = isset($_GET['status_id']) ? mysqli_real_escape_string($conn, $_GET['status_id']) : '';
 
-// 3. Build Query dynamically
+// 3. Build Query dynamically matching our structural database optimization
 $query = "SELECT * FROM complaints WHERE 1=1";
 
 if (!empty($area_filter)) {
-    // Looks for textual mentions inside location_description or coordinates backup matches
-    $query .= " AND (location_description LIKE '%$area_filter%')";
+    $query .= " AND district = '$area_filter'";
 }
 if (!empty($status_filter)) {
     $query .= " AND status_id = '$status_filter'";
@@ -134,12 +108,12 @@ $statuses_query = mysqli_query($conn, "SELECT DISTINCT status_id FROM complaints
 
 <div class="filter-section">
     <form method="GET" action="" class="filter-form">
-        <label for="area"><strong>Filter by Region:</strong></label>
+        <label for="area"><strong>Filter by District:</strong></label>
         <select name="area" id="area">
-            <option value="">-- All Regions --</option>
-            <?php foreach($cities_list as $city): ?>
-                <option value="<?php echo htmlspecialchars($city); ?>" <?php if($area_filter == $city) echo 'selected'; ?>>
-                    <?php echo htmlspecialchars($city); ?>
+            <option value="">-- All Districts --</option>
+            <?php foreach($districts_list as $district): ?>
+                <option value="<?php echo htmlspecialchars($district); ?>" <?php if($area_filter == $district) echo 'selected'; ?>>
+                    <?php echo htmlspecialchars($district); ?>
                 </option>
             <?php endforeach; ?>
         </select>
@@ -167,7 +141,7 @@ $statuses_query = mysqli_query($conn, "SELECT DISTINCT status_id FROM complaints
             <tr>
                 <th>Complaint ID</th>
                 <th>Title / Subject</th>
-                <th>Resolved District</th>
+                <th>District</th>
                 <th>Location Description</th>
                 <th>Status Code</th>
                 <th>Date Submitted</th>
@@ -176,19 +150,15 @@ $statuses_query = mysqli_query($conn, "SELECT DISTINCT status_id FROM complaints
         </thead>
         <tbody>
             <?php if (mysqli_num_rows($result) > 0): ?>
-                <?php while($complaint = mysqli_fetch_assoc($result)): 
-                    // Calculate the live district output based on DB coordinates
-                    $detected_district = getDistrictFromCoordinates($complaint['latitude'], $complaint['longitude']);
-                    
-                    // If a filter is set, skip displaying rows that don't match the API output
-                    if (!empty($area_filter) && strtolower($detected_district) !== strtolower($area_filter)) {
-                        continue;
-                    }
-                ?>
+                <?php while($complaint = mysqli_fetch_assoc($result)): ?>
                     <tr>
                         <td>#<?php echo htmlspecialchars($complaint['complaint_id']); ?></td>
                         <td><?php echo htmlspecialchars($complaint['title']); ?></td>
-                        <td><strong><?php echo htmlspecialchars($detected_district); ?></strong></td>
+                        <td>
+                            <strong>
+                                <?php echo htmlspecialchars(!empty($complaint['district']) ? $complaint['district'] : 'Not Assigned'); ?>
+                            </strong>
+                        </td>
                         <td><?php echo htmlspecialchars($complaint['location_description']); ?></td>
                         <td>
                             <span class="badge status-<?php echo $complaint['status_id']; ?>">
