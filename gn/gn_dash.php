@@ -43,7 +43,6 @@ $complaint_query = "SELECT c.complaint_id, c.title, c.description, c.location_de
 
 $comp_stmt = mysqli_prepare($conn, $complaint_query);
 if ($comp_stmt) {
-    // Binds the officer ID to ensure secure contextual loading
     mysqli_stmt_bind_param($comp_stmt, "i", $officer_id);
     mysqli_stmt_execute($comp_stmt);
     $comp_result = mysqli_stmt_get_result($comp_stmt);
@@ -61,9 +60,13 @@ if ($comp_stmt) {
     <style>
         body { font-family: Arial, sans-serif; background-color: #f2f5f2; margin: 0; padding-bottom: 50px; }
         .header { background-color: #e65100; color: white; padding: 20px; text-align: center; position: relative; }
-        .container { width: 85%; margin: 30px auto; display: flex; gap: 20px; }
-        .card { background: white; padding: 25px; width: 33.33%; border-radius: 10px; text-align: center; box-shadow: 0px 2px 8px gray; }
+        .container { width: 85%; margin: 30px auto; display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
+        
+        /* Adjusted width parameters to support 4 columns inline cleanly */
+        .card { background: white; padding: 25px; width: 22%; min-width: 220px; border-radius: 10px; text-align: center; box-shadow: 0px 2px 8px gray; display: flex; flex-direction: column; justify-content: space-between; }
         .card h3 { color: #e65100; margin-top: 0; }
+        .card p { flex-grow: 1; margin-bottom: 15px; }
+        
         button { background-color: #e65100; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; width: 100%; font-weight: bold; }
         button:hover { background-color: #b33600; }
         
@@ -126,6 +129,12 @@ if ($comp_stmt) {
         <h3>Submit Field Report</h3>
         <p>Log physical environment assessments directly to the DS office.</p>
         <button onclick="location.href='submit_report.php'">Log Field Action</button>
+    </div>
+
+    <div class="card">
+        <h3>Volunteer Programs</h3>
+        <p>Create and mobilize cleanup campaigns or local environmental events.</p>
+        <button onclick="location.href='volunteer_event_submit.php'">Post Opportunity</button>
     </div>
 </div>
 
