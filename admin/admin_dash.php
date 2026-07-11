@@ -9,6 +9,29 @@ if (!isset($_SESSION['role_id']) || $_SESSION['role_id'] != 5 || empty($_SESSION
     header("Location: ../auth/login.php");
     exit();
 }
+
+// 1. Handle Filters using your exact schema column names
+$area_filter = isset($_GET['area']) ? mysqli_real_escape_string($conn, $_GET['area']) : '';
+$status_filter = isset($_GET['status_id']) ? mysqli_real_escape_string($conn, $_GET['status_id']) : '';
+
+// 2. Build SQL Query dynamically
+$query = "SELECT * FROM complaints WHERE 1=1";
+
+if (!empty($area_filter)) {
+    $query .= " AND location_description = '$area_filter'";
+}
+if (!empty($status_filter)) {
+    $query .= " AND status_id = '$status_filter'";
+}
+
+$query .= " ORDER BY created_at DESC";
+$result = mysqli_query($conn, $query);
+
+// 3. Dynamically fetch existing locations for the dropdown component
+$areas_query = mysqli_query($conn, "SELECT DISTINCT location_description FROM complaints WHERE location_description IS NOT NULL AND location_description != ''");
+
+// 4. Fetch available status IDs currently stored in complaints
+$statuses_query = mysqli_query($conn, "SELECT DISTINCT status_id FROM complaints WHERE status_id IS NOT NULL");
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -21,15 +44,39 @@ if (!isset($_SESSION['role_id']) || $_SESSION['role_id'] != 5 || empty($_SESSION
         .container { width: 85%; margin: 30px auto; display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
         .card { background: white; padding: 25px; width: 20%; min-width: 220px; border-radius: 10px; text-align: center; box-shadow: 0px 2px 8px gray; }
         .card h3 { color: #1b5e20; }
-        button { background-color: #1b5e20; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; width: 100%; }
-        button:hover { background-color: #003300; }
+        button, .btn-submit { background-color: #1b5e20; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; width: 100%; }
+        button:hover, .btn-submit:hover { background-color: #003300; }
+        
+        /* Layout Configurations for Filtering and Data Tables */
+        .section-title { width: 85%; margin: 20px auto 10px auto; color: #1b5e20; border-bottom: 2px solid #1b5e20; padding-bottom: 5px; }
+        .filter-section { width: 85%; margin: 0 auto 20px auto; background: white; padding: 15px; border-radius: 8px; box-shadow: 0px 2px 5px rgba(0,0,0,0.1); }
+        .filter-form { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
+        .filter-form select { padding: 8px; border-radius: 5px; border: 1px solid #ccc; min-width: 150px; }
+        .filter-form .btn-submit { width: auto; padding: 8px 20px; }
+        .filter-form .btn-reset { background-color: #757575; color: white; padding: 8px 15px; text-decoration: none; border-radius: 5px; font-size: 14px; }
+        .filter-form .btn-reset:hover { background-color: #424242; }
+        
+        .table-container { width: 85%; margin: 0 auto 50px auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0px 2px 8px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th, td { padding: 12px 15px; border-bottom: 1px solid #ddd; }
+        th { background-color: #1b5e20; color: white; }
+        tr:hover { background-color: #f9f9f9; }
+        .no-data { text-align: center; padding: 30px; color: #757575; font-style: italic; }
+        
+        /* Status Badge Colors mapping to status_id integer values */
+        .badge { padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+        .status-1 { background-color: #fff9c4; color: #fbc02d; } /* E.g., Pending */
+        .status-2 { background-color: #ffcdd2; color: #c62828; } /* E.g., Escalated */
+        .status-3 { background-color: #c8e6c9; color: #25602a; } /* E.g., Completed */
     </style>
 </head>
 <body>
+
 <div class="header">
     <h1>System Admin Dashboard</h1>
     <p>Global System Control & Monitoring Portal</p>
 </div>
+
 <div class="container">
     <div class="card">
         <h3>User Management</h3>
@@ -52,5 +99,76 @@ if (!isset($_SESSION['role_id']) || $_SESSION['role_id'] != 5 || empty($_SESSION
         <button onclick="location.href='settings.php'">System Settings</button>
     </div>
 </div>
+
+<h2 class="section-title">Complaints Overview</h2>
+
+<div class="filter-section">
+    <form method="GET" action="" class="filter-form">
+        <label for="area"><strong>Filter by Location:</strong></label>
+        <select name="area" id="area">
+            <option value="">-- All Locations --</option>
+            <?php while($row = mysqli_fetch_assoc($areas_query)): ?>
+                <option value="<?php echo htmlspecialchars($row['location_description']); ?>" <?php if($area_filter == $row['location_description']) echo 'selected'; ?>>
+                    <?php echo htmlspecialchars($row['location_description']); ?>
+                </option>
+            <?php endwhile; ?>
+        </select>
+
+        <label for="status_id"><strong>Status ID:</strong></label>
+        <select name="status_id" id="status_id">
+            <option value="">-- All Statuses --</option>
+            <?php while($row = mysqli_fetch_assoc($statuses_query)): ?>
+                <option value="<?php echo htmlspecialchars($row['status_id']); ?>" <?php if($status_filter == $row['status_id']) echo 'selected'; ?>>
+                    Status Code: <?php echo htmlspecialchars($row['status_id']); ?>
+                </option>
+            <?php endwhile; ?>
+        </select>
+
+        <button type="submit" class="btn-submit">Apply Filters</button>
+        <?php if(!empty($area_filter) || !empty($status_filter)): ?>
+            <a href="admin_dash.php" class="btn-reset">Clear</a>
+        <?php endif; ?>
+    </form>
+</div>
+
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>Complaint ID</th>
+                <th>Title / Subject</th>
+                <th>Location</th>
+                <th>Status Code</th>
+                <th>Date Submitted</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php if (mysqli_num_rows($result) > 0): ?>
+                <?php while($complaint = mysqli_fetch_assoc($result)): ?>
+                    <tr>
+                        <td>#<?php echo htmlspecialchars($complaint['complaint_id']); ?></td>
+                        <td><?php echo htmlspecialchars($complaint['title']); ?></td>
+                        <td><?php echo htmlspecialchars($complaint['location_description']); ?></td>
+                        <td>
+                            <span class="badge status-<?php echo $complaint['status_id']; ?>">
+                                ID: <?php echo htmlspecialchars($complaint['status_id']); ?>
+                            </span>
+                        </td>
+                        <td><?php echo date('Y-m-d', strtotime($complaint['created_at'])); ?></td>
+                        <td>
+                            <a href="view_complaint_details.php?id=<?php echo $complaint['complaint_id']; ?>" style="color: #1b5e20; font-weight: bold; text-decoration: none;">View</a>
+                        </td>
+                    </tr>
+                <?php endwhile; ?>
+            <?php else: ?>
+                <tr>
+                    <td colspan="6" class="no-data">No complaints found matching your criteria.</td>
+                </tr>
+            <?php endif; ?>
+        </tbody>
+    </table>
+</div>
+
 </body>
 </html>
