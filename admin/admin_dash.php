@@ -23,20 +23,48 @@ $districts_list = [
 $area_filter = isset($_GET['area']) ? mysqli_real_escape_string($conn, $_GET['area']) : '';
 $status_filter = isset($_GET['status_id']) ? mysqli_real_escape_string($conn, $_GET['status_id']) : '';
 
-// 3. Build Query dynamically matching our structural database optimization
+// 3. Handle AJAX "Load More" Request
+if (isset($_GET['ajax_load'])) {
+    $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
+    
+    $query = "SELECT * FROM complaints WHERE 1=1";
+    if (!empty($area_filter)) { $query .= " AND district = '$area_filter'"; }
+    if (!empty($status_filter)) { $query .= " AND status_id = '$status_filter'"; }
+    $query .= " ORDER BY created_at DESC LIMIT 5 OFFSET $offset";
+    
+    $result = mysqli_query($conn, $query);
+    
+    if (mysqli_num_rows($result) > 0) {
+        while($complaint = mysqli_fetch_assoc($result)) {
+            $district = !empty($complaint['district']) ? htmlspecialchars($complaint['district']) : 'Not Assigned';
+            echo '<tr>
+                    <td>#' . htmlspecialchars($complaint['complaint_id']) . '</td>
+                    <td>' . htmlspecialchars($complaint['title']) . '</td>
+                    <td><strong>' . $district . '</strong></td>
+                    <td><span class="badge status-' . $complaint['status_id'] . '">ID: ' . htmlspecialchars($complaint['status_id']) . '</span></td>
+                    <td>' . date('Y-m-d', strtotime($complaint['created_at'])) . '</td>
+                    <td><a href="view_complaint_details.php?id=' . $complaint['complaint_id'] . '" style="color: #1b5e20; font-weight: bold; text-decoration: none;">View</a></td>
+                  </tr>';
+        }
+    }
+    exit(); // Stop parsing the rest of the HTML template during AJAX calls
+}
+
+// 4. Base Initial Query (Gets first 5 rows)
 $query = "SELECT * FROM complaints WHERE 1=1";
-
-if (!empty($area_filter)) {
-    $query .= " AND district = '$area_filter'";
-}
-if (!empty($status_filter)) {
-    $query .= " AND status_id = '$status_filter'";
-}
-
-$query .= " ORDER BY created_at DESC";
+if (!empty($area_filter)) { $query .= " AND district = '$area_filter'"; }
+if (!empty($status_filter)) { $query .= " AND status_id = '$status_filter'"; }
+$query .= " ORDER BY created_at DESC LIMIT 5 OFFSET 0";
 $result = mysqli_query($conn, $query);
 
-// 4. Fetch distinct status variants for filtering control
+// 5. Total count for determining if we should show the button at all
+$count_query = "SELECT COUNT(*) as total FROM complaints WHERE 1=1";
+if (!empty($area_filter)) { $count_query .= " AND district = '$area_filter'"; }
+if (!empty($status_filter)) { $count_query .= " AND status_id = '$status_filter'"; }
+$count_res = mysqli_fetch_assoc(mysqli_query($conn, $count_query));
+$total_records = $count_res['total'];
+
+// Fetch distinct statuses for filtering control
 $statuses_query = mysqli_query($conn, "SELECT DISTINCT status_id FROM complaints WHERE status_id IS NOT NULL");
 ?>
 <!DOCTYPE html>
@@ -61,7 +89,7 @@ $statuses_query = mysqli_query($conn, "SELECT DISTINCT status_id FROM complaints
         .filter-form .btn-reset { background-color: #757575; color: white; padding: 8px 15px; text-decoration: none; border-radius: 5px; font-size: 14px; }
         .filter-form .btn-reset:hover { background-color: #424242; }
         
-        .table-container { width: 85%; margin: 0 auto 50px auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0px 2px 8px rgba(0,0,0,0.1); }
+        .table-container { width: 85%; margin: 0 auto 20px auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0px 2px 8px rgba(0,0,0,0.1); }
         table { width: 100%; border-collapse: collapse; text-align: left; }
         th, td { padding: 12px 15px; border-bottom: 1px solid #ddd; }
         th { background-color: #1b5e20; color: white; }
@@ -72,6 +100,10 @@ $statuses_query = mysqli_query($conn, "SELECT DISTINCT status_id FROM complaints
         .status-1 { background-color: #fff9c4; color: #fbc02d; } 
         .status-2 { background-color: #ffcdd2; color: #c62828; } 
         .status-3 { background-color: #c8e6c9; color: #25602a; } 
+
+        .load-more-container { text-align: center; margin: 20px 0 50px 0; }
+        .btn-load-more { background-color: #757575; color: white; border: none; padding: 10px 30px; font-size: 14px; font-weight: bold; cursor: pointer; border-radius: 5px; transition: background 0.2s; width: auto; }
+        .btn-load-more:hover { background-color: #424242; }
     </style>
 </head>
 <body>
@@ -147,7 +179,7 @@ $statuses_query = mysqli_query($conn, "SELECT DISTINCT status_id FROM complaints
                 <th>Action</th>
             </tr>
         </thead>
-        <tbody>
+        <tbody id="complaints-tbody">
             <?php if (mysqli_num_rows($result) > 0): ?>
                 <?php while($complaint = mysqli_fetch_assoc($result)): ?>
                     <tr>
@@ -170,13 +202,60 @@ $statuses_query = mysqli_query($conn, "SELECT DISTINCT status_id FROM complaints
                     </tr>
                 <?php endwhile; ?>
             <?php else: ?>
-                <tr>
+                <tr id="no-data-row">
                     <td colspan="6" class="no-data">No complaints found matching your criteria.</td>
                 </tr>
             <?php endif; ?>
         </tbody>
     </table>
 </div>
+
+<div class="load-more-container">
+    <button id="load-more-btn" class="btn-load-more" data-offset="5" data-total="<?php echo $total_records; ?>" style="<?php echo ($total_records <= 5) ? 'display:none;' : ''; ?>">
+        Load More Complaints
+    </button>
+</div>
+
+<script>
+document.getElementById('load-more-btn').addEventListener('click', function() {
+    var btn = this;
+    var currentOffset = parseInt(btn.getAttribute('data-offset'));
+    var totalRecords = parseInt(btn.getAttribute('data-total'));
+    
+    // Track active filter parameters to ensure we load matching data
+    var urlParams = new URLSearchParams(window.location.search);
+    urlParams.set('ajax_load', '1');
+    urlParams.set('offset', currentOffset);
+
+    btn.innerText = "Loading...";
+    btn.disabled = true;
+
+    fetch('admin_dash.php?' + urlParams.toString())
+        .then(response => response.text())
+        .then(htmlRows => {
+            if (htmlRows.trim().length > 0) {
+                document.getElementById('complaints-tbody').insertAdjacentHTML('beforeend', htmlRows);
+                
+                var newOffset = currentOffset + 5;
+                btn.setAttribute('data-offset', newOffset);
+                
+                if (newOffset >= totalRecords) {
+                    btn.style.display = 'none';
+                } else {
+                    btn.innerText = "Load More Complaints";
+                    btn.disabled = false;
+                }
+            } else {
+                btn.style.display = 'none';
+            }
+        })
+        .catch(err => {
+            console.error("Failed to load records:", err);
+            btn.innerText = "Load More Complaints";
+            btn.disabled = false;
+        });
+});
+</script>
 
 </body>
 </html>
