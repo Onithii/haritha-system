@@ -19,36 +19,7 @@ $user_id = $_SESSION['user_id'];
 $alert_msg = "";
 $alert_class = "";
 
-// 3. ACTION HANDLING: Process self-submitting POST requests when the user registers
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['action'] === 'register') {
-    // Prepared insert statement to bind participant tracking records
-    $insert_query = "INSERT INTO volunteer_participants (event_id, user_id) VALUES (?, ?)";
-    $stmt = mysqli_prepare($conn, $insert_query);
-
-    if ($stmt) {
-        mysqli_stmt_bind_param($stmt, "ii", $event_id, $user_id);
-        
-        if (mysqli_stmt_execute($stmt)) {
-            $alert_msg = "🎉 Thank you! You have successfully registered as a volunteer for this campaign.";
-            $alert_class = "alert-success";
-        } else {
-            // Check if error is due to duplicate entry (MySQL Error Code 1062)
-            if (mysqli_errno($conn) == 1062) {
-                $alert_msg = "ℹ️ You are already registered for this event. See you there!";
-                $alert_class = "alert-info";
-            } else {
-                $alert_msg = "❌ An error occurred while processing your registration. Please try again.";
-                $alert_class = "alert-error";
-            }
-        }
-        mysqli_stmt_close($stmt);
-    } else {
-        $alert_msg = "❌ System Error: Internal pipeline failure.";
-        $alert_class = "alert-error";
-    }
-}
-
-// 4. Fetch the target volunteer event details for rendering
+// 3. Fetch the target volunteer event details first (needed for details and validation)
 $query = "SELECT * FROM volunteer_events WHERE event_id = ?";
 $stmt = mysqli_prepare($conn, $query);
 $event = null;
@@ -69,6 +40,71 @@ if (!$event) {
     exit();
 }
 
+// 4. ACTION HANDLING: Process self-submitting POST requests when the user clicks register
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['action'] === 'register') {
+    
+    // --- START CAPACITY VALIDATION ---
+    $cap_query = "SELECT COUNT(*) as current_count FROM volunteer_participants WHERE event_id = ?";
+    $cap_stmt = mysqli_prepare($conn, $cap_query);
+    $current_volunteers = 0;
+
+    if ($cap_stmt) {
+        mysqli_stmt_bind_param($cap_stmt, "i", $event_id);
+        mysqli_stmt_execute($cap_stmt);
+        $cap_result = mysqli_stmt_get_result($cap_stmt);
+        if ($cap_row = mysqli_fetch_assoc($cap_result)) {
+            $current_volunteers = (int)$cap_row['current_count'];
+        }
+        mysqli_stmt_close($cap_stmt);
+    }
+
+    // Check if the spots are completely filled up
+    if ($current_volunteers >= (int)$event['required_volunteers']) {
+        $alert_msg = "🚫 Sorry, this event has already reached its maximum volunteer capacity!";
+        $alert_class = "alert-error";
+    } else {
+        // --- PROCEED WITH REGISTRATION IF SPOTS ARE AVAILABLE ---
+        $insert_query = "INSERT INTO volunteer_participants (event_id, user_id) VALUES (?, ?)";
+        $stmt = mysqli_prepare($conn, $insert_query);
+
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, "ii", $event_id, $user_id);
+            
+            if (mysqli_stmt_execute($stmt)) {
+                $alert_msg = "🎉 Thank you! You have successfully registered as a volunteer for this campaign.";
+                $alert_class = "alert-success";
+                $current_volunteers++; // Increment local count instantly to update UI stats accurately
+            } else {
+                if (mysqli_errno($conn) == 1062) { // Duplicate entry error code
+                    $alert_msg = "ℹ️ You are already registered for this event. See you there!";
+                    $alert_class = "alert-info";
+                } else {
+                    $alert_msg = "❌ An error occurred while processing your registration. Please try again.";
+                    $alert_class = "alert-error";
+                }
+            }
+            mysqli_stmt_close($stmt);
+        } else {
+            $alert_msg = "❌ System Error: Internal pipeline failure.";
+            $alert_class = "alert-error";
+        }
+    }
+} else {
+    // If it's a standard GET request, fetch the headcount for the meta info block display
+    $cap_query = "SELECT COUNT(*) as current_count FROM volunteer_participants WHERE event_id = ?";
+    $cap_stmt = mysqli_prepare($conn, $cap_query);
+    $current_volunteers = 0;
+    if ($cap_stmt) {
+        mysqli_stmt_bind_param($cap_stmt, "i", $event_id);
+        mysqli_stmt_execute($cap_stmt);
+        $cap_result = mysqli_stmt_get_result($cap_stmt);
+        if ($cap_row = mysqli_fetch_assoc($cap_result)) {
+            $current_volunteers = (int)$cap_row['current_count'];
+        }
+        mysqli_stmt_close($cap_stmt);
+    }
+}
+
 // 5. Check if user is already enrolled beforehand to change button state natively
 $check_query = "SELECT 1 FROM volunteer_participants WHERE event_id = ? AND user_id = ?";
 $check_stmt = mysqli_prepare($conn, $check_query);
@@ -83,6 +119,9 @@ if ($check_stmt) {
     }
     mysqli_stmt_close($check_stmt);
 }
+
+// Check if event is full for formatting the button elements state
+$is_event_full = ($current_volunteers >= (int)$event['required_volunteers']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -100,7 +139,6 @@ if ($check_stmt) {
         .event-body { padding: 35px; }
         .event-title { color: #2e7d32; margin-top: 0; font-size: 26px; border-bottom: 2px solid #c8e6c9; padding-bottom: 12px; }
         
-        /* Alert Notification Box Styles */
         .alert { padding: 15px; margin-bottom: 20px; border-radius: 6px; font-weight: bold; font-size: 15px; }
         .alert-success { background-color: #c8e6c9; color: #1b5e20; border-left: 6px solid #2e7d32; }
         .alert-info { background-color: #e3f2fd; color: #0d47a1; border-left: 6px solid #1976d2; }
@@ -142,7 +180,7 @@ if ($check_stmt) {
                 <strong>📅 Target Date:</strong> <?php echo date("F d, Y", strtotime($event['event_date'])); ?>
             </div>
             <div class="meta-item">
-                <strong>👥 Needed Volunteers:</strong> <?php echo htmlspecialchars($event['required_volunteers']); ?> spots available
+                <strong>👥 Needed Volunteers:</strong> <?php echo $current_volunteers . ' / ' . htmlspecialchars($event['required_volunteers']); ?> joined
             </div>
             <div class="meta-item">
                 <strong>⏰ Time Scope:</strong> <?php echo date("g:i A", strtotime($event['start_time'])) . " - " . date("g:i A", strtotime($event['end_time'])); ?>
@@ -161,6 +199,8 @@ if ($check_stmt) {
             <input type="hidden" name="action" value="register">
             <?php if ($already_enrolled || $alert_class === 'alert-success'): ?>
                 <button type="button" class="btn-register" style="background-color: #78909c; cursor: default;" disabled>You are Enrolled</button>
+            <?php elseif ($is_event_full): ?>
+                <button type="button" class="btn-register" style="background-color: #c62828; cursor: not-allowed;" disabled>Event Full</button>
             <?php else: ?>
                 <button type="submit" class="btn-register">Confirm Registration as Volunteer</button>
             <?php endif; ?>
