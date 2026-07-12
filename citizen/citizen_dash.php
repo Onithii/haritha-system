@@ -1,3 +1,11 @@
+<?php
+// Include your database connection config
+include("../config/db.php");
+
+// Fetch open volunteer events from the database (showing newest events first)
+$query = "SELECT event_id, event_title, event_image FROM volunteer_events WHERE status = 'OPEN' ORDER BY created_at DESC";
+$result = mysqli_query($conn, $query);
+?>
 <!DOCTYPE html>
 <html>
 <head>
@@ -52,7 +60,7 @@
             background-color: #1b5e20;
         }
 
-        /* --- NEW VOLUNTEER SECTION STYLES --- */
+        /* --- VOLUNTEER SECTION STYLES --- */
         .volunteer-section {
             width: 80%;
             margin: 50px auto 0 auto;
@@ -71,7 +79,7 @@
             gap: 25px;
         }
 
-        /* The Visual Card requested in your wireframe layout */
+        /* Visual Card layout mapping to your wireframe layout */
         .volunteer-card {
             background: white;
             border-radius: 10px;
@@ -90,17 +98,17 @@
         .volunteer-img-wrapper {
             width: 100%;
             height: 180px;
-            background-color: #e0e0e0; /* Placeholder color if image is empty */
+            background-color: #e0e0e0; /* Fallback gray placeholder backdrop */
             position: relative;
         }
 
         .volunteer-img-wrapper img {
             width: 100%;
             height: 100%;
-            object-fit: cover; /* Ensures image fits perfectly without distortion */
+            object-fit: cover; /* Keeps aspect ratios proportional */
         }
 
-        /* Bottom segment of the card holding the event topic text */
+        /* Bottom segment of the card holding the event title string */
         .volunteer-info {
             padding: 20px;
             text-align: center;
@@ -121,10 +129,16 @@
             width: 100%;
             background-color: #1b5e20;
         }
+
+        .no-events {
+            color: #666;
+            font-style: italic;
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 20px;
+        }
     </style>
- </head>
-
-
+</head>
 <body>
 
 <div class="header">
@@ -157,46 +171,38 @@
 
 ---
 
-<!-- NEW SECTION: VOLUNTEER OPPORTUNITIES -->
+<!-- VOLUNTEER OPPORTUNITIES DYNAMIC CONTAINER -->
 <div class="volunteer-section">
     <h2>Volunteer Opportunities</h2>
     
     <div class="volunteer-grid">
-        
-        <!-- Example Card 1 (With Active Upload Image) -->
-        <div class="volunteer-card">
-            <div class="volunteer-img-wrapper">
-                <!-- Replace src path dynamically with your DB row value later -->
-                <img src="../uploads/event_example1.jpg" alt="Event Image" onerror="this.style.display='none'">
-            </div>
-            <div class="volunteer-info">
-                <h4>Kelani River Basin Cleanup Drive</h4>
-                <a href="view_event.php?id=1"><button class="btn-view">Join Event</button></a>
-            </div>
-        </div>
-
-        <!-- Example Card 2 (With Placeholder fallback if no image was uploaded) -->
-        <div class="volunteer-card">
-            <div class="volunteer-img-wrapper">
-                <!-- If no image exists, default styling handles it gracefully -->
-            </div>
-            <div class="volunteer-info">
-                <h4>Community Tree Planting Awareness Campaign</h4>
-                <a href="view_event.php?id=2"><button class="btn-view">Join Event</button></a>
-            </div>
-        </div>
-
-        <!-- Example Card 3 -->
-        <div class="volunteer-card">
-            <div class="volunteer-img-wrapper">
-                <img src="../uploads/event_example3.jpg" alt="Event Image" onerror="this.style.display='none'">
-            </div>
-            <div class="volunteer-info">
-                <h4>E-Waste Collection Program</h4>
-                <a href="view_event.php?id=3"><button class="btn-view">Join Event</button></a>
-            </div>
-        </div>
-
+        <?php 
+        if ($result && mysqli_num_rows($result) > 0): 
+            while ($row = mysqli_fetch_assoc($result)): 
+        ?>
+                <div class="volunteer-card">
+                    <div class="volunteer-img-wrapper">
+                        <?php if (!empty($row['event_image'])): ?>
+                            <!-- Pulls path safely out of event_image column -->
+                            <img src="<?php echo htmlspecialchars($row['event_image']); ?>" alt="Event Image" onerror="this.parentNode.style.backgroundColor='#e0e0e0'; this.remove();">
+                        <?php endif; ?>
+                    </div>
+                    <div class="volunteer-info">
+                        <!-- Pulls text dynamic values out of event_title column -->
+                        <h4><?php echo htmlspecialchars($row['event_title']); ?></h4>
+                        <a href="view_event.php?id=<?php echo $row['event_id']; ?>">
+                            <button class="btn-view">Join Event</button>
+                        </a>
+                    </div>
+                </div>
+        <?php 
+            endwhile; 
+        else: 
+        ?>
+            <p class="no-events">No active volunteer operations listed at this moment.</p>
+        <?php 
+        endif; 
+        ?>
     </div>
 </div>
 
