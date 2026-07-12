@@ -24,6 +24,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $end_time = isset($_POST['end_time']) ? trim($_POST['end_time']) : '';
     $location = isset($_POST['location']) ? trim($_POST['location']) : '';
     $required_volunteers = isset($_POST['required_volunteers']) ? (int)$_POST['required_volunteers'] : 0;
+    
+    $image_path = null; // Default value if no image is uploaded
 
     // Server-side validation
     if (empty($event_title) || empty($event_date) || empty($start_time) || empty($end_time) || empty($location) || $required_volunteers <= 0) {
@@ -33,26 +35,64 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     } elseif (strtotime($end_time) <= strtotime($start_time)) {
         $error_msg = "End time must be after the start time.";
     } else {
-        // Prepared statement to insert the data cleanly. 
-        // status defaults to 'OPEN' and created_at defaults to CURRENT_TIMESTAMP natively in DB.
-        $insert_query = "INSERT INTO volunteer_events (created_by, event_title, description, event_date, start_time, end_time, location, required_volunteers, status) 
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'OPEN')";
         
-        $stmt = mysqli_prepare($conn, $insert_query);
-        if ($stmt) {
-            mysqli_stmt_bind_param($stmt, "issssssi", $officer_id, $event_title, $description, $event_date, $start_time, $end_time, $location, $required_volunteers);
+        // Handle Image Upload Process
+        if (isset($_FILES['event_image']) && $_FILES['event_image']['error'] === UPLOAD_ERR_OK) {
+            $file_tmp = $_FILES['event_image']['tmp_name'];
+            $file_name = $_FILES['event_image']['name'];
+            $file_size = $_FILES['event_image']['size'];
+            $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
             
-            if (mysqli_stmt_execute($stmt)) {
-                $success_msg = "Volunteer event successfully published and listed for community action!";
-                // Clear out values on clean success submission
-                $event_title = $description = $event_date = $start_time = $end_time = $location = "";
-                $required_volunteers = "";
-            } else {
-                $error_msg = "Database Error: Could not save the event structure.";
+            $allowed_extensions = array("jpg", "jpeg", "png", "webp");
+            
+            // Check file extension
+            if (!in_array($file_ext, $allowed_extensions)) {
+                $error_msg = "Invalid file extension. Only JPG, JPEG, PNG, and WEBP files are allowed.";
             }
-            mysqli_stmt_close($stmt);
-        } else {
-            $error_msg = "Internal Error: System failed to prepare data stream.";
+            // Check file size limit (e.g., 5MB max)
+            elseif ($file_size > 5 * 1024 * 1024) {
+                $error_msg = "Image size is too large. Maximum size allowed is 5MB.";
+            } else {
+                // Define the upload directory (Ensure this directory exists and is writable)
+                $upload_dir = "../uploads/";
+                if (!is_dir($upload_dir)) {
+                    mkdir($upload_dir, 0755, true);
+                }
+                
+                // Create a unique name for the file to prevent overwriting
+                $new_file_name = "event_" . time() . "_" . uniqid() . "." . $file_ext;
+                $target_file = $upload_dir . $new_file_name;
+                
+                if (move_uploaded_file($file_tmp, $target_file)) {
+                    $image_path = $target_file; // Store the destination path for database entry
+                } else {
+                    $error_msg = "Failed to upload image. Please try again.";
+                }
+            }
+        }
+
+        // Only proceed to database insertion if no file errors have been thrown
+        if (empty($error_msg)) {
+            // Prepared statement updating database structure with the `event_image` column
+            $insert_query = "INSERT INTO volunteer_events (created_by, event_title, description, event_date, start_time, end_time, location, required_volunteers, event_image, status) 
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN')";
+            
+            $stmt = mysqli_prepare($conn, $insert_query);
+            if ($stmt) {
+                mysqli_stmt_bind_param($stmt, "issssssis", $officer_id, $event_title, $description, $event_date, $start_time, $end_time, $location, $required_volunteers, $image_path);
+                
+                if (mysqli_stmt_execute($stmt)) {
+                    $success_msg = "Volunteer event successfully published and listed for community action!";
+                    // Clear out values on clean success submission
+                    $event_title = $description = $event_date = $start_time = $end_time = $location = "";
+                    $required_volunteers = "";
+                } else {
+                    $error_msg = "Database Error: Could not save the event structure.";
+                }
+                mysqli_stmt_close($stmt);
+            } else {
+                $error_msg = "Internal Error: System failed to prepare data stream.";
+            }
         }
     }
 }
@@ -85,7 +125,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .form-row .form-group { flex: 1; }
         
         label { font-weight: bold; margin-bottom: 6px; color: #455a64; font-size: 14px; }
-        input[type="text"], input[type="date"], input[type="time"], input[type="number"], textarea {
+        input[type="text"], input[type="date"], input[type="time"], input[type="number"], input[type="file"], textarea {
             padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; font-family: inherit; box-sizing: border-box; width: 100%;
         }
         input:focus, textarea:focus { border-color: #e65100; outline: none; box-shadow: 0 0 5px rgba(230, 81, 0, 0.2); }
@@ -106,7 +146,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <div class="form-section">
     <h2>Post New Volunteer Opportunity</h2>
     
-    <!-- Render Response Alerts Dynamic Messages -->
     <?php if (!empty($success_msg)): ?>
         <div class="alert alert-success"><?php echo $success_msg; ?></div>
     <?php endif; ?>
@@ -114,7 +153,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <div class="alert alert-error"><?php echo $error_msg; ?></div>
     <?php endif; ?>
 
-    <form method="POST" action="">
+    <form method="POST" action="" enctype="multipart/form-data">
         <div class="form-group">
             <label for="event_title">Event Title / Campaign Objective:</label>
             <input type="text" id="event_title" name="event_title" placeholder="e.g., Kelani River Basin Cleanup Drive" value="<?php echo isset($event_title) ? htmlspecialchars($event_title) : ''; ?>" required>
@@ -123,6 +162,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <div class="form-group">
             <label for="description">Detailed Description & Instructions:</label>
             <textarea id="description" name="description" placeholder="Provide event instructions, safety tips, required gear, or general tasks expected..." required><?php echo isset($description) ? htmlspecialchars($description) : ''; ?></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="event_image">Event Header Image (Optional):</label>
+            <input type="file" id="event_image" name="event_image" accept="image/png, image/jpeg, image/jpg, image/webp">
         </div>
 
         <div class="form-row">
