@@ -13,10 +13,10 @@ if (!isset($_SESSION['role_id']) || $_SESSION['role_id'] != 2 || empty($_SESSION
 $officer_id = $_SESSION['user_id'];
 $success_msg = "";
 $error_msg = "";
+$generated_qr_url = ""; 
 
 // 2. Form Processing
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    // Collect and sanitize form inputs
     $event_title = isset($_POST['event_title']) ? trim($_POST['event_title']) : '';
     $description = isset($_POST['description']) ? trim($_POST['description']) : '';
     $event_date = isset($_POST['event_date']) ? trim($_POST['event_date']) : '';
@@ -25,9 +25,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $location = isset($_POST['location']) ? trim($_POST['location']) : '';
     $required_volunteers = isset($_POST['required_volunteers']) ? (int)$_POST['required_volunteers'] : 0;
     
-    $image_path = null; // Default value if no image is uploaded
+    $image_path = null; 
 
-    // Server-side validation
     if (empty($event_title) || empty($event_date) || empty($start_time) || empty($end_time) || empty($location) || $required_volunteers <= 0) {
         $error_msg = "Please fill out all fields with valid information.";
     } elseif (strtotime($event_date) < strtotime(date('Y-m-d'))) {
@@ -36,7 +35,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $error_msg = "End time must be after the start time.";
     } else {
         
-        // Handle Image Upload Process
         if (isset($_FILES['event_image']) && $_FILES['event_image']['error'] === UPLOAD_ERR_OK) {
             $file_tmp = $_FILES['event_image']['tmp_name'];
             $file_name = $_FILES['event_image']['name'];
@@ -45,45 +43,41 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             
             $allowed_extensions = array("jpg", "jpeg", "png", "webp");
             
-            // Check file extension
             if (!in_array($file_ext, $allowed_extensions)) {
                 $error_msg = "Invalid file extension. Only JPG, JPEG, PNG, and WEBP files are allowed.";
-            }
-            // Check file size limit (e.g., 5MB max)
-            elseif ($file_size > 5 * 1024 * 1024) {
+            } elseif ($file_size > 5 * 1024 * 1024) {
                 $error_msg = "Image size is too large. Maximum size allowed is 5MB.";
             } else {
-                // Define the upload directory (Ensure this directory exists and is writable)
                 $upload_dir = "../uploads/";
                 if (!is_dir($upload_dir)) {
                     mkdir($upload_dir, 0755, true);
                 }
                 
-                // Create a unique name for the file to prevent overwriting
                 $new_file_name = "event_" . time() . "_" . uniqid() . "." . $file_ext;
                 $target_file = $upload_dir . $new_file_name;
                 
                 if (move_uploaded_file($file_tmp, $target_file)) {
-                    $image_path = $target_file; // Store the destination path for database entry
+                    $image_path = $target_file;
                 } else {
                     $error_msg = "Failed to upload image. Please try again.";
                 }
             }
         }
 
-        // Only proceed to database insertion if no file errors have been thrown
         if (empty($error_msg)) {
-            // Prepared statement updating database structure with the `event_image` column
-            $insert_query = "INSERT INTO volunteer_events (created_by, event_title, description, event_date, start_time, end_time, location, required_volunteers, event_image, status) 
-                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN')";
+            $verification_token = bin2hex(random_bytes(16)); 
+
+            $insert_query = "INSERT INTO volunteer_events (created_by, event_title, description, event_date, start_time, end_time, location, required_volunteers, event_image, verification_token, status) 
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN')";
             
             $stmt = mysqli_prepare($conn, $insert_query);
             if ($stmt) {
-                mysqli_stmt_bind_param($stmt, "issssssis", $officer_id, $event_title, $description, $event_date, $start_time, $end_time, $location, $required_volunteers, $image_path);
+                mysqli_stmt_bind_param($stmt, "issssssiss", $officer_id, $event_title, $description, $event_date, $start_time, $end_time, $location, $required_volunteers, $image_path, $verification_token);
                 
                 if (mysqli_stmt_execute($stmt)) {
                     $success_msg = "Volunteer event successfully published and listed for community action!";
-                    // Clear out values on clean success submission
+                    $generated_qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" . urlencode($verification_token);
+
                     $event_title = $description = $event_date = $start_time = $end_time = $location = "";
                     $required_volunteers = "";
                 } else {
@@ -95,6 +89,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
         }
     }
+}
+
+// 3. FETCH EXISTING EVENTS GENERATED BY THIS GN OFFICER
+$events_list = [];
+$list_query = "SELECT event_id, event_title, event_date, location, verification_token FROM volunteer_events WHERE created_by = ? ORDER BY event_date DESC";
+$list_stmt = mysqli_prepare($conn, $list_query);
+if ($list_stmt) {
+    mysqli_stmt_bind_param($list_stmt, "i", $officer_id);
+    mysqli_stmt_execute($list_stmt);
+    $res = mysqli_stmt_get_result($list_stmt);
+    while ($row = mysqli_fetch_assoc($res)) {
+        $events_list[] = $row;
+    }
+    mysqli_stmt_close($list_stmt);
 }
 ?>
 <!DOCTYPE html>
@@ -113,8 +121,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
         .back-btn:hover { background-color: white; color: #e65100; }
         
-        .form-section { width: 50%; min-width: 450px; margin: 40px auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0px 2px 8px gray; }
-        .form-section h2 { color: #e65100; margin-top: 0; border-bottom: 2px solid #ffccbc; padding-bottom: 10px; }
+        .form-section, .manage-section { width: 50%; min-width: 450px; margin: 40px auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0px 2px 8px gray; }
+        .form-section h2, .manage-section h2 { color: #e65100; margin-top: 0; border-bottom: 2px solid #ffccbc; padding-bottom: 10px; }
         
         .alert { padding: 12px; margin-bottom: 20px; border-radius: 5px; font-weight: bold; font-size: 14px; }
         .alert-success { background-color: #c8e6c9; color: #25602a; border-left: 5px solid #388e3c; }
@@ -133,6 +141,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         
         .btn-submit { background-color: #e65100; color: white; border: none; padding: 12px 20px; cursor: pointer; border-radius: 5px; font-weight: bold; font-size: 16px; width: 100%; margin-top: 10px; }
         .btn-submit:hover { background-color: #b33600; }
+
+        .qr-card { background: #fff8f5; border: 2px dashed #e65100; border-radius: 8px; padding: 25px; margin-bottom: 25px; text-align: center; }
+        .qr-card h3 { margin-top: 0; color: #b33600; }
+        .qr-image { background: white; padding: 10px; border: 1px solid #ddd; border-radius: 5px; margin: 15px 0; display: inline-block; }
+        .btn-print { background-color: #455a64; color: white; border: none; padding: 8px 15px; cursor: pointer; border-radius: 4px; font-weight: bold; font-size: 13px; margin-top: 5px; }
+        .btn-print:hover { background-color: #263238; }
+
+        /* Management Table styling */
+        .event-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .event-table th, .event-table td { padding: 10px; border: 1px solid #ddd; text-align: left; font-size: 14px; }
+        .event-table th { background-color: #f5f5f5; color: #455a64; }
+        .btn-action-qr { background-color: #0288d1; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; text-decoration: none; font-size: 12px; font-weight: bold; }
+        .btn-action-qr:hover { background-color: #01579b; }
+
+        @media print {
+            body { background: white; }
+            .header, .form-section, .manage-section h2, .event-table, .btn-print, .back-btn { display: none !important; }
+            .manage-section { box-shadow: none; padding: 0; margin: 0; width: 100%; }
+            .qr-card { border: none; padding: 0; display: block !important; }
+        }
     </style>
 </head>
 <body>
@@ -142,6 +170,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <h1>Environmental Action Center</h1>
     <p>Mobilize Community Support & Manage Local Volunteer Resources</p>
 </div>
+
+<?php if (!empty($generated_qr_url)): ?>
+    <div class="form-section" style="margin-bottom: -20px; padding-bottom: 10px;">
+        <div class="qr-card">
+            <h3>🎟️ Created Event QR Generated Successfully</h3>
+            <div class="qr-image">
+                <img src="<?php echo $generated_qr_url; ?>" alt="Secure Attendance QR Code">
+            </div>
+            <br>
+            <button type="button" class="btn-print" onclick="window.print()">🖨️ Print Poster Now</button>
+        </div>
+    </div>
+<?php endif; ?>
 
 <div class="form-section">
     <h2>Post New Volunteer Opportunity</h2>
@@ -199,6 +240,64 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <button type="submit" class="btn-submit">Publish Opportunity</button>
     </form>
 </div>
+
+<div class="manage-section">
+    <h2>Your Posted Campaigns & Attendance Keys</h2>
+    
+    <div id="reprintQrContainer" class="qr-card" style="display:none;">
+        <h3 id="reprintTitle">Official Venue Attendance Verification Token</h3>
+        <div class="qr-image">
+            <img id="reprintQrImg" src="" alt="QR Verification Code">
+        </div>
+        <br>
+        <button type="button" class="btn-print" onclick="window.print()">🖨️ Print This Poster</button>
+        <button type="button" class="btn-print" style="background-color:#78909c;" onclick="closeReprintCard()">Cancel</button>
+    </div>
+
+    <?php if (empty($events_list)): ?>
+        <p style="color:#666; font-size:14px;">You haven't posted any volunteer events yet.</p>
+    <?php else: ?>
+        <table class="event-table">
+            <thead>
+                <tr>
+                    <th>Campaign Objective</th>
+                    <th>Date</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($events_list as $row): ?>
+                    <tr>
+                        <strong><td><?php echo htmlspecialchars($row['event_title']); ?></td></strong>
+                        <td><?php echo date("Y-m-d", strtotime($row['event_date'])); ?></td>
+                        <td>
+                            <button type="button" class="btn-action-qr" 
+                                    onclick="showOldQr('<?php echo urlencode($row['verification_token']); ?>', '<?php echo htmlspecialchars(addslashes($row['event_title'])); ?>')">
+                                🔍 View QR
+                            </button>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    <?php endif; ?>
+</div>
+
+<script>
+function showOldQr(token, title) {
+    var qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" + token;
+    document.getElementById('reprintQrImg').src = qrUrl;
+    document.getElementById('reprintTitle').innerText = "🎟️ Attendance QR: " + title;
+    document.getElementById('reprintQrContainer').style.display = "block";
+    
+    // Smooth scroll straight up to the QR presentation card
+    document.getElementById('reprintQrContainer').scrollIntoView({ behavior: 'smooth' });
+}
+
+function closeReprintCard() {
+    document.getElementById('reprintQrContainer').style.display = "none";
+}
+</script>
 
 </body>
 </html>
