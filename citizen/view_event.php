@@ -2,13 +2,13 @@
 session_start();
 include("../config/db.php");
 
-// 1. Authenticate check: Ensure user is logged in to access event insights
+// 1. Authenticate check: Ensure user is logged in
 if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])) {
     header("Location: ../auth/login.php");
     exit();
 }
 
-// 2. Validate incoming event ID parameters from GET requests
+// 2. Validate incoming event ID parameters
 if (!isset($_GET['id']) || empty(trim($_GET['id']))) {
     header("Location: citizen_dashboard.php");
     exit();
@@ -19,7 +19,7 @@ $user_id = $_SESSION['user_id'];
 $alert_msg = "";
 $alert_class = "";
 
-// 3. Fetch the target volunteer event details first (needed for details and validation)
+// 3. Fetch the target volunteer event details first
 $query = "SELECT * FROM volunteer_events WHERE event_id = ?";
 $stmt = mysqli_prepare($conn, $query);
 $event = null;
@@ -40,57 +40,59 @@ if (!$event) {
     exit();
 }
 
-// 4. ACTION HANDLING: Process self-submitting POST requests when the user clicks register
+// 4. ACTION HANDLING: Process registration form submissions
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['action'] === 'register') {
     
-    // --- START CAPACITY VALIDATION ---
-    $cap_query = "SELECT COUNT(*) as current_count FROM volunteer_participants WHERE event_id = ?";
-    $cap_stmt = mysqli_prepare($conn, $cap_query);
-    $current_volunteers = 0;
-
-    if ($cap_stmt) {
-        mysqli_stmt_bind_param($cap_stmt, "i", $event_id);
-        mysqli_stmt_execute($cap_stmt);
-        $cap_result = mysqli_stmt_get_result($cap_stmt);
-        if ($cap_row = mysqli_fetch_assoc($cap_result)) {
-            $current_volunteers = (int)$cap_row['current_count'];
-        }
-        mysqli_stmt_close($cap_stmt);
-    }
-
-    // Check if the spots are completely filled up
-    if ($current_volunteers >= (int)$event['required_volunteers']) {
-        $alert_msg = "🚫 Sorry, this event has already reached its maximum volunteer capacity!";
+    // --- NEW VALIDATION: Check if Terms and Conditions were accepted ---
+    if (!isset($_POST['accept_terms'])) {
+        $alert_msg = "⚠️ You must read and agree to the Liability Waiver and Terms before registering.";
         $alert_class = "alert-error";
     } else {
-        // --- PROCEED WITH REGISTRATION IF SPOTS ARE AVAILABLE ---
-        $insert_query = "INSERT INTO volunteer_participants (event_id, user_id) VALUES (?, ?)";
-        $stmt = mysqli_prepare($conn, $insert_query);
+        // --- CAPACITY VALIDATION ---
+        $cap_query = "SELECT COUNT(*) as current_count FROM volunteer_participants WHERE event_id = ?";
+        $cap_stmt = mysqli_prepare($conn, $cap_query);
+        $current_volunteers = 0;
 
-        if ($stmt) {
-            mysqli_stmt_bind_param($stmt, "ii", $event_id, $user_id);
-            
-            if (mysqli_stmt_execute($stmt)) {
-                $alert_msg = "🎉 Thank you! You have successfully registered as a volunteer for this campaign.";
-                $alert_class = "alert-success";
-                $current_volunteers++; // Increment local count instantly to update UI stats accurately
-            } else {
-                if (mysqli_errno($conn) == 1062) { // Duplicate entry error code
-                    $alert_msg = "ℹ️ You are already registered for this event. See you there!";
-                    $alert_class = "alert-info";
-                } else {
-                    $alert_msg = "❌ An error occurred while processing your registration. Please try again.";
-                    $alert_class = "alert-error";
-                }
+        if ($cap_stmt) {
+            mysqli_stmt_bind_param($cap_stmt, "i", $event_id);
+            mysqli_stmt_execute($cap_stmt);
+            $cap_result = mysqli_stmt_get_result($cap_stmt);
+            if ($cap_row = mysqli_fetch_assoc($cap_result)) {
+                $current_volunteers = (int)$cap_row['current_count'];
             }
-            mysqli_stmt_close($stmt);
-        } else {
-            $alert_msg = "❌ System Error: Internal pipeline failure.";
+            mysqli_stmt_close($cap_stmt);
+        }
+
+        if ($current_volunteers >= (int)$event['required_volunteers']) {
+            $alert_msg = "🚫 Sorry, this event has already reached its maximum volunteer capacity!";
             $alert_class = "alert-error";
+        } else {
+            // --- PROCEED WITH INSERTION ---
+            $insert_query = "INSERT INTO volunteer_participants (event_id, user_id) VALUES (?, ?)";
+            $stmt = mysqli_prepare($conn, $insert_query);
+
+            if ($stmt) {
+                mysqli_stmt_bind_param($stmt, "ii", $event_id, $user_id);
+                
+                if (mysqli_stmt_execute($stmt)) {
+                    $alert_msg = "🎉 Thank you! You have successfully registered as a volunteer for this campaign.";
+                    $alert_class = "alert-success";
+                    $current_volunteers++; 
+                } else {
+                    if (mysqli_errno($conn) == 1062) {
+                        $alert_msg = "ℹ️ You are already registered for this event. See you there!";
+                        $alert_class = "alert-info";
+                    } else {
+                        $alert_msg = "❌ An error occurred while processing your registration. Please try again.";
+                        $alert_class = "alert-error";
+                    }
+                }
+                mysqli_stmt_close($stmt);
+            }
         }
     }
 } else {
-    // If it's a standard GET request, fetch the headcount for the meta info block display
+    // Normal view: fetch current volunteer headcount
     $cap_query = "SELECT COUNT(*) as current_count FROM volunteer_participants WHERE event_id = ?";
     $cap_stmt = mysqli_prepare($conn, $cap_query);
     $current_volunteers = 0;
@@ -105,7 +107,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
     }
 }
 
-// 5. Check if user is already enrolled beforehand to change button state natively
+// 5. Check if user is already enrolled
 $check_query = "SELECT 1 FROM volunteer_participants WHERE event_id = ? AND user_id = ?";
 $check_stmt = mysqli_prepare($conn, $check_query);
 $already_enrolled = false;
@@ -120,7 +122,6 @@ if ($check_stmt) {
     mysqli_stmt_close($check_stmt);
 }
 
-// Check if event is full for formatting the button elements state
 $is_event_full = ($current_volunteers >= (int)$event['required_volunteers']);
 ?>
 <!DOCTYPE html>
@@ -148,7 +149,35 @@ $is_event_full = ($current_volunteers >= (int)$event['required_volunteers']);
         .meta-item { font-size: 15px; color: #455a64; }
         .meta-item strong { color: #2e7d32; }
         .description-box { font-size: 16px; line-height: 1.6; color: #333; margin-top: 20px; white-space: pre-line; }
-        .btn-register { display: block; width: 100%; background-color: #2e7d32; color: white; border: none; padding: 15px; font-size: 18px; font-weight: bold; cursor: pointer; border-radius: 6px; margin-top: 30px; text-align: center; text-decoration: none; box-sizing: border-box; }
+        
+        /* --- TERMS & CONDITIONS STYLES --- */
+        .terms-box {
+            background-color: #fafafa;
+            border: 1px solid #e0e0e0;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 30px;
+            font-size: 13px;
+            color: #555;
+            height: 110px;
+            overflow-y: scroll; /* Makes it scrollable like a standard waiver form */
+            line-height: 1.5;
+        }
+        .terms-box h4 { margin: 0 0 8px 0; color: #c62828; }
+        
+        .checkbox-container {
+            margin-top: 15px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+            cursor: pointer;
+        }
+        .checkbox-container input { cursor: pointer; margin-top: 3px; }
+
+        .btn-register { display: block; width: 100%; background-color: #2e7d32; color: white; border: none; padding: 15px; font-size: 18px; font-weight: bold; cursor: pointer; border-radius: 6px; margin-top: 25px; text-align: center; text-decoration: none; box-sizing: border-box; }
         .btn-register:hover { background-color: #1b5e20; }
     </style>
 </head>
@@ -197,6 +226,19 @@ $is_event_full = ($current_volunteers >= (int)$event['required_volunteers']);
 
         <form method="POST" action="">
             <input type="hidden" name="action" value="register">
+
+            <?php if (!$already_enrolled && !$is_event_full && $alert_class !== 'alert-success'): ?>
+                <div class="terms-box">
+                    <h4>⚠️ Liability Waiver & Release of Claims</h4>
+                    By checking the box below, I acknowledge that volunteering for environmental fieldwork involves physical activity and potential environmental hazards. I explicitly agree that the Haritha Environmental Complaint System, the local Grama Niladhari administration, and property owners are completely exempt from liability for any personal injuries, medical emergencies, or accidental damage to personal property sustained during the course of this volunteer assignment. I confirm that I am participating voluntarily and at my own risk.
+                </div>
+                
+                <label class="checkbox-container">
+                    <input type="checkbox" name="accept_terms" value="1" required>
+                    I have carefully read and I agree to the terms of the liability waiver above.
+                </label>
+            <?php endif; ?>
+
             <?php if ($already_enrolled || $alert_class === 'alert-success'): ?>
                 <button type="button" class="btn-register" style="background-color: #78909c; cursor: default;" disabled>You are Enrolled</button>
             <?php elseif ($is_event_full): ?>
