@@ -192,7 +192,9 @@ $result = mysqli_query($conn, $query);
     <div class="card">
         <h3>Profile</h3>
         <p>View and update your personal information details.</p>
-        <button type="button">My Profile</button>
+        <a href="update_profile.php">
+            <button type="button">Update Profile</button>
+        </a>
     </div>
 </div>
 
