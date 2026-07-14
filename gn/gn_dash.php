@@ -67,7 +67,9 @@ if ($comp_stmt) {
         .card h3 { color: #e65100; margin-top: 0; }
         .card p { flex-grow: 1; margin-bottom: 15px; }
         
-        button { background-color: #e65100; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; width: 100%; font-weight: bold; }
+        /* Button styles with a small margin bottom for spacing between stacked buttons */
+        button { background-color: #e65100; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; width: 100%; font-weight: bold; margin-bottom: 8px; }
+        button:last-child { margin-bottom: 0; }
         button:hover { background-color: #b33600; }
         
         .logout-btn { 
@@ -135,6 +137,7 @@ if ($comp_stmt) {
         <h3>Volunteer Programs</h3>
         <p>Create and mobilize cleanup campaigns or local environmental events.</p>
         <button onclick="location.href='volunteer_event_submit.php'">Post Opportunity</button>
+        <button onclick="location.href='participation_manage.php'">Participation Management</button>
     </div>
 </div>
 
