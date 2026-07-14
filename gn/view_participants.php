@@ -112,6 +112,11 @@ if ($part_stmt) {
         .proof-success { background-color: #c8e6c9; color: #388e3c; }
         .proof-null { background-color: #eeeeee; color: #9e9e9e; }
 
+        /* Certificate View Link */
+        .cert-link { color: #e65100; font-weight: bold; text-decoration: none; font-size: 14px; }
+        .cert-link:hover { text-decoration: underline; color: #b33600; }
+        .cert-disabled { color: #9e9e9e; font-style: italic; font-size: 13px; }
+
         /* Action Footer */
         .action-footer { margin-top: 25px; padding-top: 15px; border-top: 1px solid #ddd; text-align: right; }
         .btn-submit { background-color: #e65100; color: white; border: none; padding: 12px 25px; cursor: pointer; border-radius: 5px; font-weight: bold; font-size: 14px; }
@@ -155,16 +160,17 @@ if ($part_stmt) {
     <?php if (empty($participants)): ?>
         <div class="no-data">No citizens have registered for this event yet.</div>
     <?php else: ?>
-        <form method="POST" action="">
+        <form method="POST" action="view_participants.php?event_id=<?php echo $event_id; ?>">
             <table>
                 <thead>
                     <tr>
                         <th>Citizen ID</th>
                         <th>Full Name</th>
                         <th>Attendance Proof (QR Status)</th>
+                        <th>Certificate Action</th>
                         <th>
                             <input type="checkbox" id="select_all" onclick="toggleSelectAll(this)"> 
-                            <label for="select_all" style="font-size: 12px; margin-left: 5px; cursor:pointer;">Select All Ok</label>
+                            <label for="select_all" style="font-size: 12px; margin-left: 5px; cursor:pointer; font-weight: bold;">Select All Ok</label>
                         </th>
                     </tr>
                 </thead>
@@ -181,6 +187,15 @@ if ($part_stmt) {
                                     <span class="proof-badge proof-success">Proved</span>
                                 <?php else: ?>
                                     <span class="proof-badge proof-null">Null</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php if ($is_verified): ?>
+                                    <a href="../generate_certificate.php?event_id=<?php echo $event_id; ?>&user_id=<?php echo $citizen['user_id']; ?>" class="cert-link" target="_blank">
+                                        View Certificate ↗
+                                    </a>
+                                <?php else: ?>
+                                    <span class="cert-disabled">Ineligible</span>
                                 <?php endif; ?>
                             </td>
                             <td>
