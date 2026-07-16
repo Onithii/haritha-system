@@ -57,10 +57,15 @@ if ($list_stmt) {
         .logout-btn { position: absolute; right: 20px; top: 25px; background-color: #b71c1c; color: white; padding: 8px 15px; border-radius: 4px; text-decoration: none; font-size: 0.9em; }
         .logout-btn:hover { background-color: #7f0000; }
         
-        .container { width: 85%; margin: 30px auto; display: flex; gap: 20px; }
-        .card { background: white; padding: 25px; width: 33.33%; border-radius: 10px; text-align: center; box-shadow: 0px 2px 8px rgba(0,0,0,0.1); display: flex; flex-direction: column; justify-content: space-between; }
+        .container { width: 85%; margin: 30px auto; display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
+        
+        /* Adjusted width layout parameters to scale 4 data cards inline efficiently */
+        .card { background: white; padding: 25px; width: 22%; min-width: 220px; border-radius: 10px; text-align: center; box-shadow: 0px 2px 8px rgba(0,0,0,0.1); display: flex; flex-direction: column; justify-content: space-between; }
         .card h3 { color: #006064; margin-top: 0; }
-        button, .action-btn { background-color: #006064; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; font-weight: bold; text-decoration: none; display: inline-block; }
+        .card p { flex-grow: 1; margin-bottom: 15px; }
+        
+        button, .action-btn { background-color: #006064; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; width: 100%; font-weight: bold; text-transform: uppercase; font-size: 13px; text-decoration: none; display: inline-block; box-sizing: border-box; margin-bottom: 8px; }
+        button:last-child { margin-bottom: 0; }
         button:hover, .action-btn:hover { background-color: #00363a; }
         
         .badge { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 0.85em; font-weight: bold; margin-bottom: 15px; }
@@ -76,7 +81,7 @@ if ($list_stmt) {
         th { background-color: #006064; color: white; }
         tr:hover { background-color: #f5f5f5; }
         .status-tag { background-color: #ff9100; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
-        .sm-btn { padding: 5px 10px; font-size: 12px; border-radius: 3px; }
+        .sm-btn { padding: 5px 10px; font-size: 12px; border-radius: 3px; margin-bottom: 0; width: auto; text-transform: none; }
     </style>
 </head>
 <body>
@@ -116,6 +121,15 @@ if ($list_stmt) {
             <p>Access historical accounts of resolved field operations and closed environmental clearance entries.</p>
         </div>
         <button onclick="location.href='resolved_logs.php'">Archived Resolutions</button>
+    </div>
+
+    <div class="card">
+        <div>
+            <h3>Volunteer Campaigns</h3>
+            <p>Coordinate regional cleanup drives or manage environmental community programs.</p>
+        </div>
+        <button onclick="location.href='volunteer_event_submit.php'">Create Event</button>
+        <button onclick="location.href='participation_manage.php'">Roster Management</button>
     </div>
 </div>
 
