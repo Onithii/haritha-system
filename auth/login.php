@@ -7,7 +7,7 @@ include("../config/db.php");
 
 $error = "";
 
-if (isset($_POST['login'])) { // onithi123  password123
+if (isset($_POST['login'])) { 
     $username = trim($_POST['username']);
     $password = $_POST['password'];
 
@@ -29,17 +29,11 @@ if (isset($_POST['login'])) { // onithi123  password123
                     // Regenerate session ID for security (prevents session fixation)
                     session_regenerate_id(true);
 
-                    // FIXED: Changed from $user['id'] to match the 'user_id' column from your SELECT query
                     $_SESSION['user_id']  = $user['user_id'];
                     $_SESSION['username'] = $user['username'];
                     $_SESSION['role_id']  = $user['role_id'];
 
                     // Role-Based Redirection Matrix
-                    //citizen-1
-                    //gn-2
-                    //la-3
-                    //ds-4  
-                    //admin-5
                     switch ($user['role_id']) {
                         case 1:
                             header("Location: ../citizen/citizen_dash.php");
@@ -78,95 +72,238 @@ if (isset($_POST['login'])) { // onithi123  password123
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Haritha System - Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Noto+Sans+Sinhala:wght@400;700&display=swap" rel="stylesheet">
     <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            background: #f2f5f2;
+            font-family: 'Poppins', 'Noto Sans Sinhala', sans-serif;
+            background: url("../images/background.jpg") no-repeat center center fixed;
+            background-size: cover;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        .login-container {
-            width: 400px;
-            margin: 100px auto;
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0px 2px 8px gray;
+        /* Screen Wrapper Split Layout */
+        .page-container {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
         }
 
-        h2 {
-            text-align: center;
-            color: #2e7d32;
+        /* Left Side: Brand Text */
+        .brand-section {
+            flex: 1;
+            color: #ffffff;
+            padding-right: 50px;
+            text-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+        }
+
+        .brand-logo {
+            font-size: 24px;
+            font-weight: 300;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+        }
+
+        .brand-title {
+            font-family: 'Noto Sans Sinhala', sans-serif;
+            font-size: 5rem;
+            font-weight: 700;
+            line-height: 1.1;
             margin-bottom: 20px;
         }
 
-        .error-box {
-            background-color: #ffebee;
-            color: #c62828;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 15px;
-            border-left: 5px solid #e53935;
-            font-size: 14px;
+        .brand-subtitle {
+            font-size: 1.2rem;
+            font-weight: 300;
+            opacity: 0.9;
+            margin-bottom: 10px;
         }
 
-        input {
-            width: 100%;
-            padding: 12px;
-            margin: 10px 0;
-            box-sizing: border-box;
-            border: 1px solid #ccc;
-            border-radius: 5px;
+        .brand-desc {
+            font-size: 1.1rem;
+            opacity: 0.7;
+            font-weight: 300;
         }
 
-        button {
+        /* Right Side: Glassmorphic Form Card */
+        .login-card {
+            width: 440px;
+            background: rgba(255, 255, 255, 0.15); /* Translucent white background */
+            backdrop-filter: blur(15px); /* Frosty blurred effect */
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+            color: #ffffff;
+        }
+
+        .login-card h2 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+            opacity: 0.9;
+        }
+
+        /* Input Styles */
+        .form-group input {
             width: 100%;
-            padding: 12px;
-            background: #2e7d32;
-            color: white;
+            padding: 14px 18px;
+            background: rgba(255, 255, 255, 0.9);
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
+            font-size: 1rem;
+            color: #333333;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(102, 110, 117, 0.5);
+        }
+
+        /* Action Buttons */
+        .btn-signin {
+            width: 100%;
+            padding: 14px;
+            background: #c8d56e; /* Bright blue button as in reference */
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
             cursor: pointer;
-            font-size: 16px;
+            transition: background 0.3s ease;
             margin-top: 10px;
         }
 
-        button:hover {
-            background: #1b5e20;
+        .btn-signin:hover {
+            background: #1976d2;
+        }
+
+        .error-box {
+            background-color: rgba(239, 83, 80, 0.2);
+            border: 1px solid #ef5350;
+            color: #ffcdd2;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        /* Link Options */
+        .forgot-link {
+            text-align: right;
+            margin-top: -10px;
+            margin-bottom: 20px;
+        }
+
+        .forgot-link a, .register-link a {
+            color: #ffffff;
+            font-size: 0.85rem;
+            text-decoration: underline;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+
+        .forgot-link a:hover, .register-link a:hover {
+            opacity: 1;
         }
 
         .register-link {
             text-align: center;
-            margin-top: 15px;
-            font-size: 14px;
+            margin-top: 25px;
+            font-size: 0.9rem;
+            opacity: 0.9;
         }
 
-        .register-link a {
-            color: #2e7d32;
-            text-decoration: none;
+        /* Responsive Layout for Tablets/Mobile */
+        @media (max-width: 900px) {
+            .page-container {
+                flex-direction: column;
+                justify-content: center;
+                gap: 40px;
+            }
+            .brand-section {
+                padding-right: 0;
+                text-align: center;
+            }
+            .brand-title {
+                font-size: 3.5rem;
+            }
+            .login-card {
+                width: 100%;
+                max-width: 400px;
+            }
         }
     </style>
 </head>
 <body>
 
-<div class="login-container">
-    <h2>Haritha System Login</h2>
+<div class="page-container">
+    <div class="brand-section">
+        <div class="brand-logo">HARITHA SYSTEM</div>
+        <h1 class="brand-title">හරිත</h1>
+        <p class="brand-subtitle">Where Sustainability Meets Technology.</p>
+        <p class="brand-desc">Embark on a journey to manage, maintain, and secure a greener environment with our integrated digital systems.</p>
+    </div>
 
-    <?php if (!empty($error)): ?>
-        <div class="error-box">
-            <?php echo htmlspecialchars($error); ?>
+    <div class="login-card">
+        <h2>Sign In</h2>
+
+        <?php if (!empty($error)): ?>
+            <div class="error-box">
+                <?php echo htmlspecialchars($error); ?>
+            </div>
+        <?php endif; ?>
+
+        <form method="POST" action="">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" placeholder="Enter your username" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="••••••••••••" required>
+            </div>
+
+            <div class="forgot-link">
+                <a href="#">Forgot password?</a>
+            </div>
+
+            <button type="submit" name="login" class="btn-signin">SIGN IN</button>
+        </form>
+
+        <div class="register-link">
+            Are you new? <a href="register.php">Create an Account</a>
         </div>
-    <?php endif; ?>
-
-    <form method="POST" action="">
-        <input type="text" name="username" placeholder="Username" required>
-        <input type="password" name="password" placeholder="Password" required>
-        
-        <button type="submit" name="login">Login</button>
-    </form>
-
-    <div class="register-link">
-        Don't have an account? <a href="register.php">Register here</a>
     </div>
 </div>
 

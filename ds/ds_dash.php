@@ -36,11 +36,15 @@ $result = mysqli_stmt_get_result($stmt);
         .logout-btn { position: absolute; right: 20px; top: 30px; background: #b71c1c; color: white; padding: 8px 15px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 14px; }
         .logout-btn:hover { background: #7f0000; }
         
-        .container { width: 85%; margin: 30px auto; display: flex; gap: 20px; }
-        .card { background: white; padding: 25px; width: 33.33%; border-radius: 10px; text-align: center; box-shadow: 0px 2px 8px rgba(0,0,0,0.1); }
-        .card h3 { color: #0d47a1; margin-top: 0; }
+        .container { width: 85%; margin: 30px auto; display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
         
-        button, .action-btn { background-color: #0d47a1; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; width: 100%; font-weight: bold; text-transform: uppercase; font-size: 13px; text-decoration: none; display: inline-block; box-sizing: border-box; }
+        /* Adjusted width layout parameters to scale 4 data cards inline efficiently */
+        .card { background: white; padding: 25px; width: 22%; min-width: 220px; border-radius: 10px; text-align: center; box-shadow: 0px 2px 8px rgba(0,0,0,0.1); display: flex; flex-direction: column; justify-content: space-between; }
+        .card h3 { color: #0d47a1; margin-top: 0; }
+        .card p { flex-grow: 1; margin-bottom: 15px; }
+        
+        button, .action-btn { background-color: #0d47a1; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; width: 100%; font-weight: bold; text-transform: uppercase; font-size: 13px; text-decoration: none; display: inline-block; box-sizing: border-box; margin-bottom: 8px; }
+        button:last-child { margin-bottom: 0; }
         button:hover, .action-btn:hover { background-color: #002171; }
         
         /* Table Layout Configurations */
@@ -85,6 +89,12 @@ $result = mysqli_stmt_get_result($stmt);
         <h3>GN Performance</h3>
         <p>Monitor reporting action rates of GN divisions under your scope.</p>
         <button onclick="location.href='gn_status.php'">GN Progress Logs</button>
+    </div>
+    <div class="card">
+        <h3>Volunteer Campaigns</h3>
+        <p>Coordinate regional cleanup drives or manage environmental community programs.</p>
+        <button onclick="location.href='volunteer_event_submit.php'">Create Event</button>
+        <button onclick="location.href='participation_manage.php'">Roster Management</button>
     </div>
 </div>
 
