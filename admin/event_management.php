@@ -50,14 +50,14 @@ if (isset($_GET['delete_id'])) {
 $district_filter = isset($_GET['district']) ? mysqli_real_escape_string($conn, $_GET['district']) : '';
 $sort_option = isset($_GET['sort_by']) ? mysqli_real_escape_string($conn, $_GET['sort_by']) : 'newest';
 
-// Build the dynamic query with a subquery to count total participants
-$query = "SELECT e.event_id, e.event_title, e.event_date, e.location, e.status, 
+// Build the dynamic query referencing the explicit structural 'district' field
+$query = "SELECT e.event_id, e.event_title, e.event_date, e.district, e.status, 
           (SELECT COUNT(*) FROM volunteer_participants vp WHERE vp.event_id = e.event_id) AS total_joined
           FROM volunteer_events e WHERE 1=1";
 
 if (!empty($district_filter)) {
-    // Looks for the district name inside the location text block
-    $query .= " AND e.location LIKE '%$district_filter%'";
+    // Exact structural check against the database district mapping column
+    $query .= " AND e.district = '$district_filter'";
 }
 
 // Apply Sorting Rules
@@ -118,6 +118,7 @@ $result = mysqli_query($conn, $query);
         .badge { padding: 5px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
         .status-open { background-color: #c8e6c9; color: #25602a; }
         .status-closed { background-color: #ffcdd2; color: #c62828; }
+        .district-badge { background-color: #e3f2fd; color: #0d47a1; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; }
         .count-badge { background-color: #e8f5e9; color: #1b5e20; padding: 3px 8px; border-radius: 10px; font-size: 12px; font-weight: bold; }
     </style>
 </head>
@@ -173,7 +174,7 @@ $result = mysqli_query($conn, $query);
                 <th>Event ID</th>
                 <th>Event Name / Title</th>
                 <th>Scheduled Date</th>
-                <th>Location</th>
+                <th>Target District</th>
                 <th>Joined Count</th>
                 <th>Status</th>
                 <th style="text-align: center;">Actions</th>
@@ -186,7 +187,13 @@ $result = mysqli_query($conn, $query);
                         <td><strong>#<?php echo htmlspecialchars($event['event_id']); ?></strong></td>
                         <td><?php echo htmlspecialchars($event['event_title']); ?></td>
                         <td><?php echo date('Y-m-d', strtotime($event['event_date'])); ?></td>
-                        <td><?php echo htmlspecialchars($event['location']); ?></td>
+                        <td>
+                            <?php if(!empty($event['district'])): ?>
+                                <span class="district-badge"><?php echo htmlspecialchars($event['district']); ?></span>
+                            <?php else: ?>
+                                <span style="color:#999; font-style:italic; font-size:13px;">Unassigned</span>
+                            <?php endif; ?>
+                        </td>
                         <td>
                             <span class="count-badge">
                                 <?php echo $event['total_joined']; ?> Volunteers
