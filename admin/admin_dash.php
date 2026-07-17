@@ -151,7 +151,7 @@ $total_records = $count_res['total'];
     <div class="card">
         <h3>Event Management</h3>
         <p>Track active volunteer campaigns, participation rosters, and log data.</p>
-        <button onclick="location.href='participation_manage.php'">Manage Events</button>
+        <button onclick="location.href='event_management.php'">Manage Events</button>
     </div>
     <div class="card">
         <h3>Settings</h3>
