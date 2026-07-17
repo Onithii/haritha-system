@@ -10,6 +10,15 @@ if (!isset($_SESSION['role_id']) || $_SESSION['role_id'] != 5 || empty($_SESSION
     exit();
 }
 
+// Sri Lankan Districts list for filter matching
+$districts_list = [
+    "Colombo", "Gampaha", "Kalutara", "Kandy", "Matale", "Nuwara Eliya", 
+    "Galle", "Matara", "Hambantota", "Jaffna", "Kilinochchi", "Mannar", 
+    "Vavuniya", "Mullaitivu", "Batticaloa", "Ampara", "Trincomalee", 
+    "Kurunegala", "Puttalam", "Anuradhapura", "Polonnaruwa", "Badulla", 
+    "Moneragala", "Ratnapura", "Kegalle"
+];
+
 // Handle Event Deletion
 if (isset($_GET['delete_id'])) {
     $delete_id = (int)$_GET['delete_id'];
@@ -37,8 +46,34 @@ if (isset($_GET['delete_id'])) {
     }
 }
 
-// Fetch all events from the database
-$query = "SELECT event_id, event_title, event_date, location, status FROM volunteer_events ORDER BY created_at DESC";
+// Get Filters and Sort options
+$district_filter = isset($_GET['district']) ? mysqli_real_escape_string($conn, $_GET['district']) : '';
+$sort_option = isset($_GET['sort_by']) ? mysqli_real_escape_string($conn, $_GET['sort_by']) : 'newest';
+
+// Build the dynamic query with a subquery to count total participants
+$query = "SELECT e.event_id, e.event_title, e.event_date, e.location, e.status, 
+          (SELECT COUNT(*) FROM volunteer_participants vp WHERE vp.event_id = e.event_id) AS total_joined
+          FROM volunteer_events e WHERE 1=1";
+
+if (!empty($district_filter)) {
+    // Looks for the district name inside the location text block
+    $query .= " AND e.location LIKE '%$district_filter%'";
+}
+
+// Apply Sorting Rules
+switch ($sort_option) {
+    case 'oldest':
+        $query .= " ORDER BY e.created_at ASC";
+        break;
+    case 'hottest':
+        $query .= " ORDER BY total_joined DESC, e.created_at DESC";
+        break;
+    case 'newest':
+    default:
+        $query .= " ORDER BY e.created_at DESC";
+        break;
+}
+
 $result = mysqli_query($conn, $query);
 ?>
 <!DOCTYPE html>
@@ -54,6 +89,14 @@ $result = mysqli_query($conn, $query);
         
         .section-title { width: 85%; margin: 30px auto 10px auto; color: #1b5e20; border-bottom: 2px solid #1b5e20; padding-bottom: 5px; }
         
+        .filter-section { width: 85%; margin: 0 auto 20px auto; background: white; padding: 15px; border-radius: 8px; box-shadow: 0px 2px 5px rgba(0,0,0,0.1); box-sizing: border-box; }
+        .filter-form { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
+        .filter-form select { padding: 8px; border-radius: 5px; border: 1px solid #ccc; min-width: 170px; }
+        .filter-form .btn-submit { background-color: #1b5e20; color: white; border: none; padding: 8px 20px; cursor: pointer; border-radius: 5px; font-weight: bold; width: auto; }
+        .filter-form .btn-submit:hover { background-color: #003300; }
+        .filter-form .btn-reset { background-color: #757575; color: white; padding: 8px 15px; text-decoration: none; border-radius: 5px; font-size: 14px; }
+        .filter-form .btn-reset:hover { background-color: #424242; }
+
         .alert { width: 85%; margin: 15px auto; padding: 12px; border-radius: 5px; font-weight: bold; text-align: center; }
         .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .alert-danger { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
@@ -75,6 +118,7 @@ $result = mysqli_query($conn, $query);
         .badge { padding: 5px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
         .status-open { background-color: #c8e6c9; color: #25602a; }
         .status-closed { background-color: #ffcdd2; color: #c62828; }
+        .count-badge { background-color: #e8f5e9; color: #1b5e20; padding: 3px 8px; border-radius: 10px; font-size: 12px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -86,6 +130,33 @@ $result = mysqli_query($conn, $query);
 </div>
 
 <h2 class="section-title">Active & Scheduled Events</h2>
+
+<!-- Filter Panel Section -->
+<div class="filter-section">
+    <form method="GET" action="" class="filter-form">
+        <label for="district"><strong>Filter by District:</strong></label>
+        <select name="district" id="district">
+            <option value="">-- All Districts --</option>
+            <?php foreach($districts_list as $district): ?>
+                <option value="<?php echo htmlspecialchars($district); ?>" <?php if($district_filter == $district) echo 'selected'; ?>>
+                    <?php echo htmlspecialchars($district); ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+
+        <label for="sort_by"><strong>Sort Metrics:</strong></label>
+        <select name="sort_by" id="sort_by">
+            <option value="newest" <?php if($sort_option == 'newest') echo 'selected'; ?>>Newest Added</option>
+            <option value="oldest" <?php if($sort_option == 'oldest') echo 'selected'; ?>>Oldest Added</option>
+            <option value="hottest" <?php if($sort_option == 'hottest') echo 'selected'; ?>>Highest Participation</option>
+        </select>
+
+        <button type="submit" class="btn-submit">Apply Filters</button>
+        <?php if(!empty($district_filter) || $sort_option != 'newest'): ?>
+            <a href="participation_manage.php" class="btn-reset">Clear</a>
+        <?php endif; ?>
+    </form>
+</div>
 
 <!-- Display Action Notifications -->
 <?php if (isset($_GET['msg']) && $_GET['msg'] == 'deleted'): ?>
@@ -103,6 +174,7 @@ $result = mysqli_query($conn, $query);
                 <th>Event Name / Title</th>
                 <th>Scheduled Date</th>
                 <th>Location</th>
+                <th>Joined Count</th>
                 <th>Status</th>
                 <th style="text-align: center;">Actions</th>
             </tr>
@@ -115,6 +187,11 @@ $result = mysqli_query($conn, $query);
                         <td><?php echo htmlspecialchars($event['event_title']); ?></td>
                         <td><?php echo date('Y-m-d', strtotime($event['event_date'])); ?></td>
                         <td><?php echo htmlspecialchars($event['location']); ?></td>
+                        <td>
+                            <span class="count-badge">
+                                <?php echo $event['total_joined']; ?> Volunteers
+                            </span>
+                        </td>
                         <td>
                             <span class="badge <?php echo ($event['status'] == 'OPEN') ? 'status-open' : 'status-closed'; ?>">
                                 <?php echo htmlspecialchars($event['status']); ?>
@@ -134,7 +211,7 @@ $result = mysqli_query($conn, $query);
                 <?php endwhile; ?>
             <?php else: ?>
                 <tr>
-                    <td colspan="6" class="no-data">No active volunteer events mapped inside the system records.</td>
+                    <td colspan="7" class="no-data">No active volunteer events mapped inside the system records matching your selection.</td>
                 </tr>
             <?php endif; ?>
         </tbody>
