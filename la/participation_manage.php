@@ -47,12 +47,12 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_participants' && isset($_
         exit();
     }
     
-    // Query to grab volunteer records registered to this event
-    $p_query = "SELECT u.user_id, u.name, u.email, vp.attendance_verified 
+    // FIXED: Adjusted to pull structural fields f_name and l_name instead of missing 'name' field
+    $p_query = "SELECT u.user_id, u.f_name, u.l_name, u.email, vp.attendance_verified 
                 FROM volunteer_participants vp 
                 JOIN users u ON vp.user_id = u.user_id 
                 WHERE vp.event_id = ? 
-                ORDER BY vp.attendance_verified DESC, u.name ASC";
+                ORDER BY vp.attendance_verified DESC, u.f_name ASC";
                 
     $p_stmt = mysqli_prepare($conn, $p_query);
     $participants = [];
@@ -107,6 +107,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
 
 // 4. Fetch only volunteer programs deployed by this explicit LA officer
 $events = [];
+//  FIXED
 $events_query = "SELECT e.event_id, e.event_title, e.location, e.event_date, COUNT(vp.user_id) as total_joined 
                  FROM volunteer_events e
                  LEFT JOIN volunteer_participants vp ON e.event_id = vp.event_id
@@ -153,6 +154,9 @@ if ($evt_stmt) {
         
         .btn-view { color: #0288d1; font-weight: bold; cursor: pointer; background: none; border: none; padding: 0; font-size: 14px; text-decoration: underline; }
         .btn-view:hover { color: #01579b; }
+        
+        .cert-manage-link { color: #006064; font-weight: bold; text-decoration: none; font-size: 14px; }
+        .cert-manage-link:hover { text-decoration: underline; color: #00363a; }
         
         .btn-delete { 
             background-color: #d32f2f; color: white; 
@@ -209,7 +213,8 @@ if ($evt_stmt) {
                     <th>Event Name</th>
                     <th>Date Scheduled</th>
                     <th>Location</th>
-                    <th>Roster Management</th>
+                    <th>Quick Look Roster</th>
+                    <th>Certificates & Records</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -222,8 +227,13 @@ if ($evt_stmt) {
                         <td><?php echo htmlspecialchars($event['location'] ?? 'Not Specified'); ?></td>
                         <td>
                             <button class="btn-view" onclick="openParticipantsModal(<?php echo $event['event_id']; ?>, '<?php echo urlencode($event['event_title']); ?>')">
-                                View Participants (<?php echo $event['total_joined']; ?>) →
+                                View Modal (<?php echo $event['total_joined']; ?>)
                             </button>
+                        </td>
+                        <td>
+                            <a href="view_participants.php?event_id=<?php echo $event['event_id']; ?>" class="cert-manage-link">
+                                Manage Forms &rarr;
+                            </a>
                         </td>
                         <td>
                             <form method="POST" action="" onsubmit="return confirm('Are you sure you want to completely delete this event? All verification histories will be lost logs.');" style="margin:0;">
@@ -286,9 +296,12 @@ function openParticipantsModal(eventId, eventTitle) {
                     ? `<span class="badge badge-verified">✓ Attended</span>` 
                     : `<span class="badge badge-pending">Pending Scan</span>`;
                 
+                // FIXED: Concatenated structural columns f_name and l_name here
+                let fullName = p.f_name + " " + p.l_name;
+                
                 tableHtml += `
                     <tr>
-                        <td><strong>${escapeHtml(p.name)}</strong></td>
+                        <td><strong>${escapeHtml(fullName)}</strong></td>
                         <td>${escapeHtml(p.email)}</td>
                         <td>${statusBadge}</td>
                     </tr>
@@ -299,7 +312,7 @@ function openParticipantsModal(eventId, eventTitle) {
             contentContainer.innerHTML = tableHtml;
         })
         .catch(err => {
-            contentContainer.innerHTML = "<p style='color:#d32f2f;'>Error fetching data feed. Please try again.</p>";
+            contentContainer.innerHTML = "<p style='color:#d32f2f;'>Error processing structural JSON response feed.</p>";
         });
 }
 
