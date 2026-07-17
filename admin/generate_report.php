@@ -17,7 +17,7 @@ $districts_list = [
     "Moneragala", "Ratnapura", "Kegalle"
 ];
 
-// Read Form inputs - Defaulting to the current month in 2026
+// Read Form inputs
 $report_type = isset($_GET['report_type']) ? mysqli_real_escape_string($conn, $_GET['report_type']) : '';
 $start_date = isset($_GET['start_date']) ? mysqli_real_escape_string($conn, $_GET['start_date']) : date('Y-m-01');
 $end_date = isset($_GET['end_date']) ? mysqli_real_escape_string($conn, $_GET['end_date']) : date('Y-m-t');
@@ -30,25 +30,39 @@ if (!empty($report_type)) {
     $report_generated = true;
     
     if ($report_type == 'complaint_summary') {
-        // Build base condition filtering by dates
-        $where = "WHERE created_at BETWEEN '$start_date 00:00:00' AND '$end_date 23:59:59'";
-        // Dynamically append district if one is chosen
+        // Build base condition filtering by dates mapping to table alias 'c'
+        $where = "WHERE c.created_at BETWEEN '$start_date 00:00:00' AND '$end_date 23:59:59'";
         if (!empty($district)) {
-            $where .= " AND district = '$district'";
+            $where .= " AND c.district = '$district'";
         }
         
-        $query = "SELECT complaint_id, title, district, created_at FROM complaints $where ORDER BY created_at DESC";
+        // Stage 3 Upgraded Query: Joining Categories and Status tables
+        $query = "SELECT c.complaint_id, c.title, c.district, c.created_at, 
+                         cat.category_name, s.status_name 
+                  FROM complaints c
+                  INNER JOIN complaint_categories cat ON c.category_id = cat.category_id
+                  INNER JOIN complaint_status s ON c.status_id = s.status_id
+                  $where 
+                  ORDER BY c.created_at DESC";
+                  
         $report_data = mysqli_query($conn, $query);
 
     } elseif ($report_type == 'volunteer_events') {
-        // Build base condition filtering by dates
-        $where = "WHERE event_date BETWEEN '$start_date' AND '$end_date'";
-        // Dynamically append district if one is chosen
+        // Build base condition filtering by dates mapping to table alias 'e'
+        $where = "WHERE e.event_date BETWEEN '$start_date' AND '$end_date'";
         if (!empty($district)) {
-            $where .= " AND district = '$district'";
+            $where .= " AND e.district = '$district'";
         }
         
-        $query = "SELECT event_id, event_title, district, event_date FROM volunteer_events $where ORDER BY event_date DESC";
+        // Stage 3 Upgraded Query: Left Joining participants to calculate total rosters dynamically
+        $query = "SELECT e.event_id, e.event_title, e.district, e.event_date, e.required_volunteers, e.status,
+                         COUNT(vp.participant_id) AS registered_count
+                  FROM volunteer_events e
+                  LEFT JOIN volunteer_participants vp ON e.event_id = vp.event_id
+                  $where 
+                  GROUP BY e.event_id 
+                  ORDER BY e.event_date DESC";
+                  
         $report_data = mysqli_query($conn, $query);
     }
 }
@@ -57,7 +71,7 @@ if (!empty($report_type)) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Haritha Reporting - Stage 2</title>
+    <title>Haritha Reporting - Stage 3</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 30px; background-color: #f9f9f9; }
         .filter-box { background: white; padding: 20px; border: 1px solid #ccc; border-radius: 5px; margin-bottom: 20px; }
@@ -74,7 +88,7 @@ if (!empty($report_type)) {
 </head>
 <body>
 
-    <h1>Haritha Reporting Engine (Stage 2: Filtering Logic)</h1>
+    <h1>Haritha Reporting Engine (Stage 3: Relational Data Joins)</h1>
     <a href="admin_dash.php">← Back to Dashboard</a>
     <hr>
 
@@ -84,7 +98,7 @@ if (!empty($report_type)) {
         </div>
     <?php endif; ?>
 
-    <!-- Upgraded Stage 2 Filter Form -->
+    <!-- Filter Form Section -->
     <div class="filter-box">
         <form method="GET" action="">
             <div class="filter-grid">
@@ -128,9 +142,8 @@ if (!empty($report_type)) {
     <!-- Data Output View -->
     <?php if ($report_generated && !mysqli_error($conn)): ?>
         <div class="results-box">
-            <h2>Active Dataset Metrics</h2>
-            <p>Filtering records between <strong><?php echo $start_date; ?></strong> and <strong><?php echo $end_date; ?></strong> 
-               <?php echo !empty($district) ? " within <strong>" . htmlspecialchars($district) . "</strong>" : " across all locations"; ?>.</p>
+            <h2>Active Relational Dataset</h2>
+            <p>Filtering records between <strong><?php echo $start_date; ?></strong> and <strong><?php echo $end_date; ?></strong>.</p>
 
             <table>
                 <?php if ($report_type == 'complaint_summary'): ?>
@@ -139,6 +152,8 @@ if (!empty($report_type)) {
                             <th>ID</th>
                             <th>Complaint Title</th>
                             <th>District</th>
+                            <th>Category Classification</th>
+                            <th>Current Status</th>
                             <th>Date Created</th>
                         </tr>
                     </thead>
@@ -148,10 +163,12 @@ if (!empty($report_type)) {
                                 <td>#<?php echo $row['complaint_id']; ?></td>
                                 <td><?php echo htmlspecialchars($row['title']); ?></td>
                                 <td><?php echo htmlspecialchars($row['district']); ?></td>
+                                <td><strong><?php echo htmlspecialchars($row['category_name']); ?></strong></td>
+                                <td><?php echo htmlspecialchars($row['status_name']); ?></td>
                                 <td><?php echo $row['created_at']; ?></td>
                             </tr>
                         <?php endwhile; else: ?>
-                            <tr><td colspan="4" style="color:#777; font-style:italic;">No records match your selected date and location criteria.</td></tr>
+                            <tr><td colspan="6" style="color:#777; font-style:italic;">No records match your selected criteria.</td></tr>
                         <?php endif; ?>
                     </tbody>
 
@@ -161,7 +178,10 @@ if (!empty($report_type)) {
                             <th>ID</th>
                             <th>Event Title</th>
                             <th>District</th>
-                            <th>Event Date</th>
+                            <th>Scheduled Date</th>
+                            <th>Target Capacity</th>
+                            <th>Registered Roster</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -171,9 +191,12 @@ if (!empty($report_type)) {
                                 <td><?php echo htmlspecialchars($row['event_title']); ?></td>
                                 <td><?php echo htmlspecialchars($row['district']); ?></td>
                                 <td><?php echo $row['event_date']; ?></td>
+                                <td><?php echo $row['required_volunteers']; ?> Workers</td>
+                                <td><strong><?php echo $row['registered_count']; ?> Enrolled</strong></td>
+                                <td><?php echo htmlspecialchars($row['status']); ?></td>
                             </tr>
                         <?php endwhile; else: ?>
-                            <tr><td colspan="4" style="color:#777; font-style:italic;">No campaign entries match your selected date and location criteria.</td></tr>
+                            <tr><td colspan="7" style="color:#777; font-style:italic;">No campaign entries match your selected criteria.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 <?php endif; ?>
