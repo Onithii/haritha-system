@@ -51,7 +51,7 @@ $district_filter = isset($_GET['district']) ? mysqli_real_escape_string($conn, $
 $sort_option = isset($_GET['sort_by']) ? mysqli_real_escape_string($conn, $_GET['sort_by']) : 'newest';
 
 // Build the dynamic query referencing the explicit structural 'district' field
-$query = "SELECT e.event_id, e.event_title, e.event_date, e.district, e.status, 
+$query = "SELECT e.event_id, e.event_title, e.event_date, e.district, e.status, e.created_at,
           (SELECT COUNT(*) FROM volunteer_participants vp WHERE vp.event_id = e.event_id) AS total_joined
           FROM volunteer_events e WHERE 1=1";
 
@@ -60,16 +60,19 @@ if (!empty($district_filter)) {
     $query .= " AND e.district = '$district_filter'";
 }
 
-// Apply Sorting Rules
+// Apply Sorting Rules using the verified database structural fields
 switch ($sort_option) {
     case 'oldest':
+        // Oldest records first based on creation date timestamp
         $query .= " ORDER BY e.created_at ASC";
         break;
     case 'hottest':
+        // Sorts descending by highest total participant signups, falling back to recent creations
         $query .= " ORDER BY total_joined DESC, e.created_at DESC";
         break;
     case 'newest':
     default:
+        // Newest records first (Default display metric)
         $query .= " ORDER BY e.created_at DESC";
         break;
 }
