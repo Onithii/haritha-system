@@ -93,9 +93,10 @@ $total_records = $count_res['total'];
         body { font-family: Arial, sans-serif; background-color: #f2f5f2; margin: 0; }
         .header { background-color: #1b5e20; color: white; padding: 20px; text-align: center; }
         .container { width: 85%; margin: 30px auto; display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
-        .card { background: white; padding: 25px; width: 20%; min-width: 220px; border-radius: 10px; text-align: center; box-shadow: 0px 2px 8px gray; }
-        .card h3 { color: #1b5e20; }
-        button, .btn-submit { background-color: #1b5e20; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; width: 100%; }
+        .card { background: white; padding: 25px; width: 18%; min-width: 220px; border-radius: 10px; text-align: center; box-shadow: 0px 2px 8px gray; display: flex; flex-direction: column; justify-content: space-between; }
+        .card h3 { color: #1b5e20; margin-top: 0; }
+        .card p { flex-grow: 1; margin-bottom: 20px; color: #555; font-size: 14px; }
+        button, .btn-submit { background-color: #1b5e20; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; width: 100%; font-weight: bold; }
         button:hover, .btn-submit:hover { background-color: #003300; }
         
         .section-title { width: 85%; margin: 20px auto 10px auto; color: #1b5e20; border-bottom: 2px solid #1b5e20; padding-bottom: 5px; }
@@ -145,6 +146,12 @@ $total_records = $count_res['total'];
         <h3>Complaints Master</h3>
         <p>Monitor, track, or reassign any complaint in the system.</p>
         <button onclick="location.href='all_complaints.php'">All Complaints</button>
+    </div>
+    <!-- ADDED: Event Management Card Module -->
+    <div class="card">
+        <h3>Event Management</h3>
+        <p>Track active volunteer campaigns, participation rosters, and log data.</p>
+        <button onclick="location.href='participation_manage.php'">Manage Events</button>
     </div>
     <div class="card">
         <h3>Settings</h3>
