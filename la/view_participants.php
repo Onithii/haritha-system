@@ -232,7 +232,7 @@ if ($part_stmt) {
             </table>
 
             <div class="action-footer">
-                <button type="submit" name="issue_certificates" class="btn-submit">Confirm & Issue Certificates</button>
+                <button type="submit" name="issue_certificates" class="btn-submit">Confirm & Issue Certificate</button>
             </div>
         </form>
     <?php endif; ?>
