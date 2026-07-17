@@ -140,7 +140,7 @@ $total_records = $count_res['total'];
     <div class="card">
         <h3>System Reports</h3>
         <p>View cross-district analytics and resolution timelines.</p>
-        <button onclick="location.href='view_reports.php'">View Analytics</button>
+        <button onclick="location.href='generate_report.php'">View Analytics</button>
     </div>
     <div class="card">
         <h3>Complaints Master</h3>
