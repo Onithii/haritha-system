@@ -10,34 +10,6 @@ if (!isset($_SESSION['role_id']) || $_SESSION['role_id'] != 5 || empty($_SESSION
     exit();
 }
 
-// --- ADDED: Self-contained Broadcast Processing Layer ---
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'send_broadcast') {
-    header('Content-Type: application/json');
-    
-    $title = isset($_POST['title']) ? trim(mysqli_real_escape_string($conn, $_POST['title'])) : '';
-    $message = isset($_POST['message']) ? trim(mysqli_real_escape_string($conn, $_POST['message'])) : '';
-    $expires_at = !empty($_POST['expires_at']) ? mysqli_real_escape_string($conn, $_POST['expires_at']) : null;
-    $created_by = (int)$_SESSION['user_id'];
-
-    if (empty($title) || empty($message)) {
-        echo json_encode(['status' => 'error', 'message' => 'Title and Message fields are mandatory.']);
-        exit();
-    }
-
-    if ($expires_at) {
-        $query = "INSERT INTO messages (title, message, created_by, expires_at) VALUES ('$title', '$message', $created_by, '$expires_at')";
-    } else {
-        $query = "INSERT INTO messages (title, message, created_by) VALUES ('$title', '$message', $created_by)";
-    }
-
-    if (mysqli_query($conn, $query)) {
-        echo json_encode(['status' => 'success', 'message' => 'Broadcast message sent to everyone successfully!']);
-    } else {
-        echo json_encode(['status' => 'error', 'message' => 'Database error: ' . mysqli_error($conn)]);
-    }
-    exit();
-}
-
 // 1. Sri Lankan Districts list for clean filter matching
 $districts_list = [
     "Colombo", "Gampaha", "Kalutara", "Kandy", "Matale", "Nuwara Eliya", 
@@ -64,6 +36,7 @@ $status_filter = isset($_GET['status_id']) ? mysqli_real_escape_string($conn, $_
 // Helper function to safely render badges inside structural loops
 function renderStatusBadge($status_id, $status_map) {
     $name = isset($status_map[$status_id]) ? $status_map[$status_id] : "UNKNOWN";
+    // Normalize values above 3 to fall back cleanly onto style colors if needed
     $class_id = ($status_id <= 3) ? $status_id : (($status_id == 4 || $status_id == 5) ? 3 : 2);
     return '<span class="badge status-' . $class_id . '">' . htmlspecialchars($name) . '</span>';
 }
@@ -150,7 +123,7 @@ $total_records = $count_res['total'];
         .btn-load-more { background-color: #757575; color: white; border: none; padding: 10px 30px; font-size: 14px; font-weight: bold; cursor: pointer; border-radius: 5px; transition: background 0.2s; width: auto; }
         .btn-load-more:hover { background-color: #424242; }
 
-        /* --- ADDED: Side Panel & Overlay Structural Rules --- */
+        /* Side Panel Design Structural CSS Rules */
         .side-panel {
             position: fixed;
             top: 0;
@@ -197,7 +170,6 @@ $total_records = $count_res['total'];
         }
         .panel-form-group {
             margin-bottom: 15px;
-            text-align: left;
         }
         .panel-form-group label {
             display: block;
@@ -262,8 +234,8 @@ $total_records = $count_res['total'];
     <div class="card">
         <h3>Messages</h3>
         <p>View user inquiries, system alerts, and internal emergency broadcast updates.</p>
-        <!-- FIX: Replaced old path link with correct drawer state toggler execution -->
-        <button onclick="toggleMessagePanel(true)">Messages</button>
+        <!-- Triggers JS slide open directly without redirection -->
+        <button onclick="toggleMessagePanel(true)">View Messages</button>
     </div>
     <div class="card">
         <h3>Settings</h3>
@@ -356,9 +328,10 @@ $total_records = $count_res['total'];
     </button>
 </div>
 
-<!-- --- ADDED: Structural Elements for UI Sliding Overlay Drawer --- -->
+<!-- Overlay element for Modal Focus Context -->
 <div id="panelOverlay" class="panel-overlay" onclick="toggleMessagePanel(false)"></div>
 
+<!-- Broadcast Drawer Panel Module Interface Markup -->
 <div id="messageSidePanel" class="side-panel">
     <div class="side-panel-header">
         <h2>Broadcast Message</h2>
@@ -366,8 +339,6 @@ $total_records = $count_res['total'];
     </div>
     
     <form id="broadcastForm">
-        <input type="hidden" name="action" value="send_broadcast">
-        
         <div class="panel-form-group">
             <label for="msg_title">Alert Title / Subject</label>
             <input type="text" id="msg_title" name="title" placeholder="e.g., Scheduled System Maintenance" required>
@@ -375,7 +346,7 @@ $total_records = $count_res['total'];
         
         <div class="panel-form-group">
             <label for="msg_body">Message Body</label>
-            <textarea id="msg_body" name="message" placeholder="Type message details here..." required></textarea>
+            <textarea id="msg_body" name="message" placeholder="Type the transmission copy here for all system tiers..." required></textarea>
         </div>
         
         <div class="panel-form-group">
@@ -427,7 +398,7 @@ document.getElementById('load-more-btn').addEventListener('click', function() {
         });
 });
 
-// --- ADDED: Control functions for managing slide drawer element state ---
+// Function controlling Slide Drawer animations state
 function toggleMessagePanel(open) {
     var panel = document.getElementById('messageSidePanel');
     var overlay = document.getElementById('panelOverlay');
@@ -441,7 +412,7 @@ function toggleMessagePanel(open) {
     }
 }
 
-// Updated AJAX Submission Routing back to self (admin_dash.php)
+// Dynamic AJAX Submission Interceptor logic for form panel
 document.getElementById('broadcastForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
@@ -451,37 +422,23 @@ document.getElementById('broadcastForm').addEventListener('submit', function(e) 
     btn.innerText = "Processing Broadcast...";
     btn.disabled = true;
 
-    // FIX: Directed back to admin_dash.php where the target POST processor handles execution
-    fetch('admin_dash.php', {
+    fetch('send_broadcast.php', {
         method: 'POST',
         body: formData
     })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error("HTTP status " + response.status + " - Verify page context routing.");
-        }
-        return response.text();
-    })
-    .then(text => {
-        try {
-            var data = JSON.parse(text);
-            alert(data.message);
-            if (data.status === 'success') {
-                toggleMessagePanel(false); 
-            } else {
-                btn.innerText = "Send Broadcast Notification";
-                btn.disabled = false;
-            }
-        } catch (jsonError) {
-            console.error("Raw Server Response:", text);
-            alert("Server Error! Response: " + text.substring(0, 300));
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        if (data.status === 'success') {
+            toggleMessagePanel(false); 
+        } else {
             btn.innerText = "Send Broadcast Notification";
             btn.disabled = false;
         }
     })
     .catch(err => {
         console.error("Transmission Failure:", err);
-        alert("Connection Error: " + err.message);
+        alert("An error occurred while deploying your network broadcast message.");
         btn.innerText = "Send Broadcast Notification";
         btn.disabled = false;
     });
