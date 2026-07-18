@@ -5,6 +5,14 @@ include("../config/db.php");
 // Fetch open volunteer events from the database (showing newest events first)
 $query = "SELECT event_id, event_title, event_image FROM volunteer_events WHERE status = 'OPEN' ORDER BY created_at DESC";
 $result = mysqli_query($conn, $query);
+
+// --- ADDED: Fetch Active System Broadcast Alerts ---
+$current_time = date('Y-m-d H:i:s');
+$broadcast_query = "SELECT title, message, created_at FROM messages 
+                    WHERE expires_at IS NULL OR expires_at > '$current_time' 
+                    ORDER BY created_at DESC";
+$broadcast_result = mysqli_query($conn, $broadcast_query);
+$notification_count = mysqli_num_rows($broadcast_result);
 ?>
 <!DOCTYPE html>
 <html>
@@ -31,14 +39,13 @@ $result = mysqli_query($conn, $query);
             display: flex;
             justify-content: space-between;
             gap: 15px;
-            flex-wrap: wrap; /* Allows wrap on smaller screens */
+            flex-wrap: wrap;
         }
 
-        /* Base Card Styles for Dashboard Actions */
         .card {
             background: white;
             padding: 25px 15px;
-            width: 22%; /* Adjusted to comfortably fit 4 cards in a row */
+            width: 22%;
             min-width: 200px;
             border-radius: 10px;
             text-align: center;
@@ -80,7 +87,6 @@ $result = mysqli_query($conn, $query);
             background-color: #1b5e20;
         }
 
-        /* --- VOLUNTEER SECTION STYLES --- */
         .volunteer-section {
             width: 85%;
             margin: 50px auto 0 auto;
@@ -99,7 +105,6 @@ $result = mysqli_query($conn, $query);
             gap: 25px;
         }
 
-        /* Visual Card layout mapping to your wireframe layout */
         .volunteer-card {
             background: white;
             border-radius: 10px;
@@ -114,21 +119,19 @@ $result = mysqli_query($conn, $query);
             transform: translateY(-5px);
         }
 
-        /* Top segment of the card holding the image */
         .volunteer-img-wrapper {
             width: 100%;
             height: 180px;
-            background-color: #e0e0e0; /* Fallback gray placeholder backdrop */
+            background-color: #e0e0e0;
             position: relative;
         }
 
         .volunteer-img-wrapper img {
             width: 100%;
             height: 100%;
-            object-fit: cover; /* Keeps aspect ratios proportional */
+            object-fit: cover;
         }
 
-        /* Bottom segment of the card holding the event title string */
         .volunteer-info {
             padding: 20px;
             text-align: center;
@@ -157,9 +160,187 @@ $result = mysqli_query($conn, $query);
             text-align: center;
             padding: 20px;
         }
+
+        /* --- ADDED: Notification Sticky Trigger Badge Styles --- */
+        .notification-trigger {
+            position: fixed;
+            top: 40%;
+            right: 0;
+            background-color: #e65100;
+            color: white;
+            width: 55px;
+            height: 50px;
+            border-radius: 10px 0 0 10px;
+            box-shadow: -2px 2px 10px rgba(0,0,0,0.3);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9997;
+            transition: background-color 0.2s, transform 0.2s;
+        }
+        
+        .notification-trigger:hover {
+            background-color: #bf360c;
+            transform: scale(1.05);
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: 4px;
+            left: 6px;
+            background-color: #d84315;
+            color: white;
+            border: 2px solid white;
+            font-size: 11px;
+            font-weight: bold;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* --- ADDED: Notification Side Panel Layout Drawer --- */
+        .noti-panel {
+            position: fixed;
+            top: 0;
+            right: -420px;
+            width: 380px;
+            height: 100%;
+            background-color: #ffffff;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.2);
+            transition: right 0.3s ease-in-out;
+            z-index: 9999;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .noti-panel.open {
+            right: 0;
+        }
+
+        .noti-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #2e7d32;
+            padding-bottom: 12px;
+            margin-bottom: 15px;
+        }
+
+        .noti-panel-header h2 {
+            margin: 0;
+            color: #2e7d32;
+            font-size: 20px;
+        }
+
+        .close-noti-btn {
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 28px;
+            cursor: pointer;
+        }
+
+        .close-noti-btn:hover {
+            color: #d84315;
+        }
+
+        .noti-list-wrapper {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        .noti-item {
+            background: #f9fbf9;
+            border-left: 4px solid #e65100;
+            padding: 12px;
+            margin-bottom: 12px;
+            border-radius: 0 6px 6px 0;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        }
+
+        .noti-item h4 {
+            margin: 0 0 5px 0;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .noti-item p {
+            margin: 0 0 8px 0;
+            color: #555;
+            font-size: 13px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+        }
+
+        .noti-time {
+            font-size: 11px;
+            color: #999;
+            display: block;
+            text-align: right;
+        }
+
+        .no-noti-msg {
+            text-align: center;
+            color: #777;
+            font-style: italic;
+            margin-top: 40px;
+        }
+
+        .noti-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.3);
+            display: none;
+            z-index: 9998;
+        }
     </style>
 </head>
 <body>
+
+<!-- --- ADDED: Sticky Floating Notification Bell Trigger --- -->
+<div class="notification-trigger" onclick="toggleNotificationPanel(true)">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+    </svg>
+    <?php if ($notification_count > 0): ?>
+        <div class="notification-badge"><?php echo $notification_count; ?></div>
+    <?php endif; ?>
+</div>
+
+<!-- --- ADDED: Notification Side Panel & Overlay Mask Backdrop --- -->
+<div id="notiOverlay" class="noti-overlay" onclick="toggleNotificationPanel(false)"></div>
+
+<div id="notificationSidePanel" class="noti-panel">
+    <div class="noti-panel-header">
+        <h2>System Announcements</h2>
+        <button class="close-noti-btn" onclick="toggleNotificationPanel(false)">&times;</button>
+    </div>
+    
+    <div class="noti-list-wrapper">
+        <?php if ($notification_count > 0): ?>
+            <?php while ($msg = mysqli_fetch_assoc($broadcast_result)): ?>
+                <div class="noti-item">
+                    <h4><?php echo htmlspecialchars($msg['title']); ?></h4>
+                    <p><?php echo htmlspecialchars($msg['message']); ?></p>
+                    <span class="noti-time"><?php echo date('M d, Y h:i A', strtotime($msg['created_at'])); ?></span>
+                </div>
+            <?php endwhile; ?>
+        <?php else: ?>
+            <p class="no-noti-msg">No active broadcast notices to display.</p>
+        <?php endif; ?>
+    </div>
+</div>
 
 <div class="header">
     <h1>Citizen Dashboard</h1>
@@ -231,6 +412,21 @@ $result = mysqli_query($conn, $query);
         ?>
     </div>
 </div>
+
+<script>
+// --- ADDED: Control functions to handle Notification Sidebar visibility state ---
+function toggleNotificationPanel(open) {
+    var panel = document.getElementById('notificationSidePanel');
+    var overlay = document.getElementById('notiOverlay');
+    if (open) {
+        panel.classList.add('open');
+        overlay.style.display = 'block';
+    } else {
+        panel.classList.remove('open');
+        overlay.style.display = 'none';
+    }
+}
+</script>
 
 </body>
 </html>
