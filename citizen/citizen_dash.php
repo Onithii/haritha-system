@@ -161,7 +161,7 @@ $notification_count = mysqli_num_rows($broadcast_result);
             padding: 20px;
         }
 
-        /* --- ADDED: Notification Sticky Trigger Badge Styles --- */
+        /* --- Notification Sticky Trigger Badge Styles --- */
         .notification-trigger {
             position: fixed;
             top: 40%;
@@ -202,7 +202,7 @@ $notification_count = mysqli_num_rows($broadcast_result);
             justify-content: center;
         }
 
-        /* --- ADDED: Notification Side Panel Layout Drawer --- */
+        /* --- Notification Side Panel Layout Drawer --- */
         .noti-panel {
             position: fixed;
             top: 0;
@@ -221,7 +221,7 @@ $notification_count = mysqli_num_rows($broadcast_result);
 
         .noti-panel.open {
             right: 0;
-        }
+            }
 
         .noti-panel-header {
             display: flex;
@@ -307,18 +307,18 @@ $notification_count = mysqli_num_rows($broadcast_result);
 </head>
 <body>
 
-<!-- --- ADDED: Sticky Floating Notification Bell Trigger --- -->
+<!-- Sticky Floating Notification Bell Trigger -->
 <div class="notification-trigger" onclick="toggleNotificationPanel(true)">
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
         <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
     </svg>
     <?php if ($notification_count > 0): ?>
-        <div class="notification-badge"><?php echo $notification_count; ?></div>
+        <div class="notification-badge" id="notiBadge"><?php echo $notification_count; ?></div>
     <?php endif; ?>
 </div>
 
-<!-- --- ADDED: Notification Side Panel & Overlay Mask Backdrop --- -->
+<!-- Notification Side Panel & Overlay Mask Backdrop -->
 <div id="notiOverlay" class="noti-overlay" onclick="toggleNotificationPanel(false)"></div>
 
 <div id="notificationSidePanel" class="noti-panel">
@@ -414,13 +414,30 @@ $notification_count = mysqli_num_rows($broadcast_result);
 </div>
 
 <script>
-// --- ADDED: Control functions to handle Notification Sidebar visibility state ---
+// Keep badge hidden on refresh if user has already viewed notifications
+document.addEventListener("DOMContentLoaded", function() {
+    var badge = document.getElementById('notiBadge');
+    if (badge && localStorage.getItem('notificationsViewed') === 'true') {
+        badge.remove();
+    }
+});
+
+// Control functions to handle Notification Sidebar visibility and clear badge state
 function toggleNotificationPanel(open) {
     var panel = document.getElementById('notificationSidePanel');
     var overlay = document.getElementById('notiOverlay');
+    var badge = document.getElementById('notiBadge');
+    
     if (open) {
         panel.classList.add('open');
         overlay.style.display = 'block';
+        
+        // Instantly hide badge from view upon opening
+        if (badge) {
+            badge.remove();
+        }
+        // Save state across page reloads
+        localStorage.setItem('notificationsViewed', 'true');
     } else {
         panel.classList.remove('open');
         overlay.style.display = 'none';
