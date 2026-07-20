@@ -1,8 +1,9 @@
 <?php
+session_start();
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
-session_start();
+
 include("../config/db.php");
 
 $error = "";
@@ -99,7 +100,7 @@ if (isset($_POST['login'])) {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 20px;
+            padding: 20px; 
         }
 
         /* Left Side: Brand Text */

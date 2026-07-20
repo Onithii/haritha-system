@@ -70,8 +70,8 @@ $notification_count = mysqli_num_rows($broadcast_result);
         .header { background-color: #e65100; color: white; padding: 20px; text-align: center; position: relative; }
         .container { width: 85%; margin: 30px auto; display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
         
-        /* Adjusted width parameters to support 4 columns inline cleanly */
-        .card { background: white; padding: 25px; width: 22%; min-width: 220px; border-radius: 10px; text-align: center; box-shadow: 0px 2px 8px gray; display: flex; flex-direction: column; justify-content: space-between; }
+        /* Adjusted width parameters to support 4-5 columns inline cleanly and responsively */
+        .card { background: white; padding: 25px; flex: 1 1 220px; max-width: 280px; border-radius: 10px; text-align: center; box-shadow: 0px 2px 8px gray; display: flex; flex-direction: column; justify-content: space-between; }
         .card h3 { color: #e65100; margin-top: 0; }
         .card p { flex-grow: 1; margin-bottom: 15px; }
         
@@ -324,6 +324,13 @@ $notification_count = mysqli_num_rows($broadcast_result);
         <p>Create and mobilize cleanup campaigns or local environmental events.</p>
         <button onclick="location.href='volunteer_event_submit.php'">Post Opportunity</button>
         <button onclick="location.href='participation_manage.php'">Participation Management</button>
+    </div>
+
+    <!-- ADDED: Generate Report Card -->
+    <div class="card">
+        <h3>Generate Reports</h3>
+        <p>Compile summaries of complaints, volunteer efforts, and regional statistics.</p>
+        <button onclick="location.href='gn_generate_report.php'">View Reports</button>
     </div>
 </div>
 
