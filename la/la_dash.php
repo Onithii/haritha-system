@@ -67,8 +67,8 @@ $notification_count = mysqli_num_rows($broadcast_result);
         
         .container { width: 85%; margin: 30px auto; display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
         
-        /* Adjusted width layout parameters to scale 4 data cards inline efficiently */
-        .card { background: white; padding: 25px; width: 22%; min-width: 220px; border-radius: 10px; text-align: center; box-shadow: 0px 2px 8px rgba(0,0,0,0.1); display: flex; flex-direction: column; justify-content: space-between; }
+        /* Adjusted width parameters to accommodate multi-row responsive flexing smoothly */
+        .card { background: white; padding: 25px; width: 22%; min-width: 240px; border-radius: 10px; text-align: center; box-shadow: 0px 2px 8px rgba(0,0,0,0.1); display: flex; flex-direction: column; justify-content: space-between; }
         .card h3 { color: #006064; margin-top: 0; }
         .card p { flex-grow: 1; margin-bottom: 15px; }
         
@@ -316,6 +316,15 @@ $notification_count = mysqli_num_rows($broadcast_result);
         </div>
         <button onclick="location.href='volunteer_event_submit.php'">Create Event</button>
         <button onclick="location.href='participation_manage.php'">Roster Management</button>
+    </div>
+
+    <!-- ADDED: Local Authority Report Engine Card -->
+    <div class="card">
+        <div>
+            <h3>Analytics & Reports</h3>
+            <p>Compile structural summary matrices and generate printable validation insights for jurisdictional reviews.</p>
+        </div>
+        <button onclick="location.href='la_generate_report.php'">Compile Reports</button>
     </div>
 </div>
 
