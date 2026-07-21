@@ -301,23 +301,7 @@ $notification_count = mysqli_num_rows($broadcast_result);
 </div>
 
 <div class="container">
-    <div class="card">
-        <h3>Pending Verifications</h3>
-        <p>Verify citizen profiles, addresses, and local residency details.</p>
-        <button onclick="location.href='verify_citizens.php'">Verify Records</button>
-    </div>
     
-    <div class="card">
-        <h3>Active Territory Map</h3>
-        <p>View complete geolocated environmental maps inside your boundary constraints.</p>
-        <button onclick="location.href='gn_map.php'">Open Map View</button>
-    </div>
-    
-    <div class="card">
-        <h3>Submit Field Report</h3>
-        <p>Log physical environment assessments directly to the DS office.</p>
-        <button onclick="location.href='submit_report.php'">Log Field Action</button>
-    </div>
 
     <div class="card">
         <h3>Volunteer Programs</h3>
