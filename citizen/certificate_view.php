@@ -81,7 +81,7 @@ if ($stmt) {
 
 <div class="header">
     <!-- Links safely back to the dashboard you just updated -->
-    <a href="citizen_dashboard.php" class="back-btn">← Back to Dashboard</a>
+    <a href="citizen_dash.php" class="back-btn">← Back to Dashboard</a>
     <h1>Achievements & Recognitions</h1>
 </div>
 
