@@ -280,34 +280,6 @@ $notification_count = mysqli_num_rows($broadcast_result);
 
 <div class="container">
     <div class="card">
-        <div>
-            <h3>Assigned Tasks</h3>
-            <?php if ($escalated_count > 0): ?>
-                <div class="badge badge-alert">⚠️ <?php echo $escalated_count; ?> Escalation(s) Pending</div>
-                <p>Environmental hazards have been referred to your council area for immediate cleanup operations.</p>
-            <?php else: ?>
-                <div class="badge badge-clear">✓ System Clear</div>
-                <p class="empty-text">No pending environmental complaints are currently escalated to your division.</p>
-            <?php endif; ?>
-        </div>
-        <button onclick="location.href='assigned_tasks.php'">View Tasks</button>
-    </div>
-
-    <div class="card">
-        <div>
-            <h3>Action Progress</h3>
-            <p>Update statuses of ongoing on-site operations, team deployments, or mitigation status updates.</p>
-        </div>
-        <button onclick="location.href='update_progress.php'">Track Actions</button>
-    </div>
-
-    <div class="card">
-        <div>
-            <h3>Resolution Logs</h3>
-            <p>Access historical accounts of resolved field operations and closed environmental clearance entries.</p>
-        </div>
-        <button onclick="location.href='resolved_logs.php'">Archived Resolutions</button>
-    </div>
 
     <div class="card">
         <div>

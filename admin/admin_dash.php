@@ -10,7 +10,7 @@ if (!isset($_SESSION['role_id']) || $_SESSION['role_id'] != 5 || empty($_SESSION
     exit();
 }
 
-// --- ADDED: Self-contained Broadcast Processing Layer ---
+// --- Self-contained Broadcast Processing Layer ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'send_broadcast') {
     header('Content-Type: application/json');
     
@@ -118,9 +118,33 @@ $total_records = $count_res['total'];
     <title>Admin Dashboard</title>
     <style>
         body { font-family: Arial, sans-serif; background-color: #f2f5f2; margin: 0; }
-        .header { background-color: #1b5e20; color: white; padding: 20px; text-align: center; }
+        
+        .header { 
+            background-color: #1b5e20; 
+            color: white; 
+            padding: 20px 40px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            box-sizing: border-box;
+        }
+        .header-title h1 { margin: 0; font-size: 24px; }
+        .header-title p { margin: 5px 0 0 0; font-size: 14px; opacity: 0.9; }
+        
+        .btn-top-logout { 
+            background-color: #c62828; 
+            color: white; 
+            padding: 10px 20px; 
+            text-decoration: none; 
+            border-radius: 5px; 
+            font-weight: bold; 
+            font-size: 14px;
+            transition: background 0.2s ease;
+        }
+        .btn-top-logout:hover { background-color: #8e0000; }
+
         .container { width: 85%; margin: 30px auto; display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
-        .card { background: white; padding: 25px; width: 18%; min-width: 220px; border-radius: 10px; text-align: center; box-shadow: 0px 2px 8px gray; display: flex; flex-direction: column; justify-content: space-between; }
+        .card { background: white; padding: 25px; width: 20%; min-width: 220px; border-radius: 10px; text-align: center; box-shadow: 0px 2px 8px gray; display: flex; flex-direction: column; justify-content: space-between; }
         .card h3 { color: #1b5e20; margin-top: 0; }
         .card p { flex-grow: 1; margin-bottom: 20px; color: #555; font-size: 14px; }
         button, .btn-submit { background-color: #1b5e20; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; width: 100%; font-weight: bold; }
@@ -150,7 +174,7 @@ $total_records = $count_res['total'];
         .btn-load-more { background-color: #757575; color: white; border: none; padding: 10px 30px; font-size: 14px; font-weight: bold; cursor: pointer; border-radius: 5px; transition: background 0.2s; width: auto; }
         .btn-load-more:hover { background-color: #424242; }
 
-        /* --- ADDED: Side Panel & Overlay Structural Rules --- */
+        /* --- Side Panel & Overlay Structural Rules --- */
         .side-panel {
             position: fixed;
             top: 0;
@@ -166,9 +190,7 @@ $total_records = $count_res['total'];
             display: flex;
             flex-direction: column;
         }
-        .side-panel.open {
-            right: 0;
-        }
+        .side-panel.open { right: 0; }
         .side-panel-header {
             display: flex;
             justify-content: space-between;
@@ -177,11 +199,7 @@ $total_records = $count_res['total'];
             padding-bottom: 10px;
             margin-bottom: 20px;
         }
-        .side-panel-header h2 {
-            margin: 0;
-            color: #1b5e20;
-            font-size: 22px;
-        }
+        .side-panel-header h2 { margin: 0; color: #1b5e20; font-size: 22px; }
         .close-panel-btn {
             background: none;
             border: none;
@@ -191,14 +209,8 @@ $total_records = $count_res['total'];
             width: auto;
             padding: 0;
         }
-        .close-panel-btn:hover {
-            color: #c62828;
-            background: none;
-        }
-        .panel-form-group {
-            margin-bottom: 15px;
-            text-align: left;
-        }
+        .close-panel-btn:hover { color: #c62828; background: none; }
+        .panel-form-group { margin-bottom: 15px; text-align: left; }
         .panel-form-group label {
             display: block;
             font-weight: bold;
@@ -215,10 +227,7 @@ $total_records = $count_res['total'];
             box-sizing: border-box;
             font-family: Arial, sans-serif;
         }
-        .panel-form-group textarea {
-            resize: vertical;
-            min-height: 120px;
-        }
+        .panel-form-group textarea { resize: vertical; min-height: 120px; }
         .panel-overlay {
             position: fixed;
             top: 0;
@@ -234,8 +243,11 @@ $total_records = $count_res['total'];
 <body>
 
 <div class="header">
-    <h1>System Admin Dashboard</h1>
-    <p>Global System Control & Monitoring Portal</p>
+    <div class="header-title">
+        <h1>System Admin Dashboard</h1>
+        <p>Global System Control & Monitoring Portal</p>
+    </div>
+    <a href="../auth/logout.php" class="btn-top-logout">Logout</a>
 </div>
 
 <div class="container">
@@ -250,11 +262,6 @@ $total_records = $count_res['total'];
         <button onclick="location.href='generate_report.php'">View Analytics</button>
     </div>
     <div class="card">
-        <h3>Complaints Master</h3>
-        <p>Monitor, track, or reassign any complaint in the system.</p>
-        <button onclick="location.href='all_complaints.php'">All Complaints</button>
-    </div>
-    <div class="card">
         <h3>Event Management</h3>
         <p>Track active volunteer campaigns, participation rosters, and log data.</p>
         <button onclick="location.href='event_management.php'">Manage Events</button>
@@ -262,13 +269,7 @@ $total_records = $count_res['total'];
     <div class="card">
         <h3>Messages</h3>
         <p>View user inquiries, system alerts, and internal emergency broadcast updates.</p>
-        <!-- FIX: Replaced old path link with correct drawer state toggler execution -->
         <button onclick="toggleMessagePanel(true)">Messages</button>
-    </div>
-    <div class="card">
-        <h3>Settings</h3>
-        <p>Configure regional boundaries, roles, and system parameters.</p>
-        <button onclick="location.href='settings.php'">System Settings</button>
     </div>
 </div>
 
@@ -356,7 +357,7 @@ $total_records = $count_res['total'];
     </button>
 </div>
 
-<!-- --- ADDED: Structural Elements for UI Sliding Overlay Drawer --- -->
+<!-- Dynamic Overlay Slide Panel -->
 <div id="panelOverlay" class="panel-overlay" onclick="toggleMessagePanel(false)"></div>
 
 <div id="messageSidePanel" class="side-panel">
@@ -388,7 +389,7 @@ $total_records = $count_res['total'];
 </div>
 
 <script>
-// Logic processing complaint data infinite scroll additions
+// Infinite scroll processing for complaint data
 document.getElementById('load-more-btn').addEventListener('click', function() {
     var btn = this;
     var currentOffset = parseInt(btn.getAttribute('data-offset'));
@@ -427,7 +428,7 @@ document.getElementById('load-more-btn').addEventListener('click', function() {
         });
 });
 
-// --- ADDED: Control functions for managing slide drawer element state ---
+// Control functions for managing slide drawer state
 function toggleMessagePanel(open) {
     var panel = document.getElementById('messageSidePanel');
     var overlay = document.getElementById('panelOverlay');
@@ -441,7 +442,7 @@ function toggleMessagePanel(open) {
     }
 }
 
-// Updated AJAX Submission Routing back to self (admin_dash.php)
+// AJAX Submission Routing
 document.getElementById('broadcastForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
@@ -451,7 +452,6 @@ document.getElementById('broadcastForm').addEventListener('submit', function(e) 
     btn.innerText = "Processing Broadcast...";
     btn.disabled = true;
 
-    // FIX: Directed back to admin_dash.php where the target POST processor handles execution
     fetch('admin_dash.php', {
         method: 'POST',
         body: formData
