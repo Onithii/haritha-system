@@ -98,7 +98,7 @@ if ($evt_stmt) {
 <body>
 
 <div class="header">
-    <a href="dashboard.php" class="back-btn">← Back to Dashboard</a>
+    <a href="gn_dash.php" class="back-btn">← Back to Dashboard</a>
     <h1>Volunteer Participation Management</h1>
 </div>
 
