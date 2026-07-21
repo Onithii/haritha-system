@@ -1,9 +1,9 @@
 <?php
-// Include your database connection config
+// Include database connection config
 include("../config/db.php");
 
 // Fetch open volunteer events from the database
-$query = "SELECT event_id, event_title, event_image FROM volunteer_events WHERE status = 'OPEN' ORDER BY created_at DESC";
+$query = "SELECT event_id, event_title, event_image, event_date, location, required_volunteers FROM volunteer_events WHERE status = 'OPEN' ORDER BY created_at DESC";
 $result = mysqli_query($conn, $query);
 
 // Fetch Active System Broadcast Alerts
@@ -12,47 +12,48 @@ $broadcast_query = "SELECT title, message, created_at FROM messages
                     WHERE expires_at IS NULL OR expires_at > '$current_time' 
                     ORDER BY created_at DESC";
 $broadcast_result = mysqli_query($conn, $broadcast_query);
-$notification_count = mysqli_num_rows($broadcast_result);
+$notification_count = $broadcast_result ? mysqli_num_rows($broadcast_result) : 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Citizen Dashboard - Haritha</title>
+    <title>Citizen Dashboard - Haritha System</title>
     <style>
         :root {
             --primary-color: #1b5e20;
             --primary-hover: #144718;
-            --bg-color: #f4f6f8;
-            --card-bg: #ffffff;
-            --text-main: #2c3e50;
+            --bg-color: #f8f9fa;
+            --surface-bg: #ffffff;
+            --text-main: #212529;
             --text-muted: #6c757d;
-            --accent-orange: #f39c12;
-            --border-color: #e9ecef;
-            --shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            --border-color: #e0e0e0;
+            --border-light: #f1f3f5;
+            --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.04);
+            --shadow-hover: 0 8px 18px rgba(0, 0, 0, 0.08);
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             background-color: var(--bg-color);
             margin: 0;
-            padding: 0;
+            padding: 0 0 50px 0;
             color: var(--text-main);
         }
 
-        /* --- Modern Top Navbar Header --- */
+        /* --- Header Navigation --- */
         .header {
             background-color: var(--primary-color);
             color: white;
-            padding: 15px 8%;
+            padding: 14px 8%;
             display: flex;
             justify-content: space-between;
             align-items: center;
             position: sticky;
             top: 0;
             z-index: 1000;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .header-left {
@@ -62,41 +63,38 @@ $notification_count = mysqli_num_rows($broadcast_result);
         }
 
         .btn-home {
-            color: white;
+            color: rgba(255, 255, 255, 0.9);
             text-decoration: none;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 12px;
-            border-radius: 6px;
-            transition: background-color 0.2s;
+            padding: 6px 12px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: background-color 0.2s, color 0.2s;
         }
 
         .btn-home:hover {
             background-color: rgba(255, 255, 255, 0.15);
+            color: white;
         }
 
         .header-title-container h1 {
             margin: 0;
-            font-size: 20px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
         }
 
         .header-right {
             display: flex;
             align-items: center;
-            gap: 20px;
         }
 
-        /* Notification Trigger Button inside Header */
         .notification-trigger {
             position: relative;
-            background: rgba(255, 255, 255, 0.15);
-            width: 40px;
-            height: 40px;
+            background: rgba(255, 255, 255, 0.12);
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -113,189 +111,222 @@ $notification_count = mysqli_num_rows($broadcast_result);
             position: absolute;
             top: -2px;
             right: -2px;
-            background-color: #e74c3c;
+            background-color: #d32f2f;
             color: white;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: bold;
             border-radius: 50%;
-            width: 18px;
-            height: 18px;
+            width: 16px;
+            height: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
             border: 2px solid var(--primary-color);
         }
 
-        /* --- Main Content Layout --- */
-        .main-wrapper {
-            max-width: 1200px;
-            margin: 40px auto;
+        /* --- Main Dashboard Container --- */
+        .dashboard-container {
+            max-width: 1100px;
+            margin: 30px auto;
             padding: 0 20px;
         }
 
-        .section-title {
-            font-size: 20px;
+        .dashboard-header {
+            margin-bottom: 25px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+        }
+
+        .dashboard-header h2 {
+            margin: 0;
+            font-size: 22px;
             font-weight: 700;
-            margin-bottom: 20px;
             color: var(--text-main);
         }
 
-        /* Quick Action Grid Cards */
-        .actions-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 20px;
-            margin-bottom: 45px;
+        .dashboard-header p {
+            margin: 4px 0 0 0;
+            font-size: 14px;
+            color: var(--text-muted);
         }
 
-        .action-card {
-            background: var(--card-bg);
-            border-radius: 12px;
-            padding: 24px;
-            box-shadow: var(--shadow);
+        /* --- Quick Action Navigation Bar --- */
+        .quick-nav {
+            background: var(--surface-bg);
             border: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .action-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
-        }
-
-        .card-icon-box {
-            width: 48px;
-            height: 48px;
-            background-color: #e8f5e9;
-            color: var(--primary-color);
-            border-radius: 10px;
+            border-radius: 6px;
+            padding: 12px 20px;
             display: flex;
             align-items: center;
-            justify-content: center;
-            margin-bottom: 15px;
+            justify-content: space-between;
+            margin-bottom: 35px;
+            box-shadow: var(--shadow-sm);
         }
 
-        .action-card h3 {
-            margin: 0 0 8px 0;
-            font-size: 16px;
-            color: var(--text-main);
-        }
-
-        .action-card p {
+        .quick-nav-title {
             font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
             color: var(--text-muted);
-            line-height: 1.4;
-            margin-bottom: 20px;
-            flex-grow: 1;
+            letter-spacing: 0.5px;
         }
 
-        .btn-card {
-            display: inline-block;
-            text-align: center;
-            padding: 10px 16px;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: 13px;
+        .quick-nav-links {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn-nav {
             text-decoration: none;
-            transition: background 0.2s;
-            border: 1px solid var(--primary-color);
-            color: var(--primary-color);
-            background: transparent;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 8px 16px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
 
-        .btn-card.primary {
+        .btn-nav-primary {
             background-color: var(--primary-color);
             color: white;
         }
 
-        .btn-card.primary:hover {
+        .btn-nav-primary:hover {
             background-color: var(--primary-hover);
         }
 
-        .btn-card.outline:hover {
-            background-color: #e8f5e9;
-        }
-
-        /* --- Volunteer Operations Grid --- */
-        .volunteer-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-            gap: 25px;
-        }
-
-        .volunteer-card {
-            background: var(--card-bg);
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: var(--shadow);
+        .btn-nav-secondary {
+            background-color: #fff;
+            color: var(--text-main);
             border: 1px solid var(--border-color);
+        }
+
+        .btn-nav-secondary:hover {
+            background-color: #f1f3f5;
+            border-color: #ced4da;
+        }
+
+        /* --- Volunteer Event Cards Grid --- */
+        .section-header {
+            margin-bottom: 18px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-main);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+            gap: 22px;
+        }
+
+        .event-card {
+            background: var(--surface-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
             display: flex;
             flex-direction: column;
-            transition: transform 0.2s;
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
-        .volunteer-card:hover {
-            transform: translateY(-4px);
+        .event-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-hover);
         }
 
-        .volunteer-img-wrapper {
+        .card-image-wrapper {
             width: 100%;
             height: 160px;
-            background-color: #e2e8f0;
+            background-color: #e9ecef;
+            border-bottom: 1px solid var(--border-light);
             position: relative;
         }
 
-        .volunteer-img-wrapper img {
+        .card-image-wrapper img {
             width: 100%;
             height: 100%;
             object-fit: cover;
         }
 
-        .volunteer-info {
+        .card-body {
             padding: 18px;
             display: flex;
             flex-direction: column;
             flex-grow: 1;
         }
 
-        .volunteer-info h4 {
+        .card-title {
             margin: 0 0 10px 0;
-            font-size: 15px;
+            font-size: 16px;
+            font-weight: 700;
             color: var(--text-main);
+            line-height: 1.3;
         }
 
-        .event-meta {
-            font-size: 12px;
+        .card-meta {
+            font-size: 13px;
             color: var(--text-muted);
-            margin-bottom: 15px;
+            margin-bottom: 18px;
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 6px;
         }
 
-        .btn-view {
-            margin-top: auto;
-            width: 100%;
-            padding: 9px;
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-            background: white;
-            color: var(--text-main);
+        .meta-line {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .meta-label {
             font-weight: 600;
-            cursor: pointer;
+            color: #495057;
+        }
+
+        .badge-status {
+            display: inline-block;
+            padding: 3px 8px;
+            font-size: 11px;
+            font-weight: 600;
+            border-radius: 12px;
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+            width: fit-content;
+            margin-bottom: 12px;
+        }
+
+        .btn-card-action {
+            margin-top: auto;
+            display: block;
             text-align: center;
+            padding: 9px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--primary-color);
+            background-color: transparent;
+            border: 1px solid var(--primary-color);
+            border-radius: 4px;
             text-decoration: none;
-            transition: background 0.2s;
+            transition: all 0.2s;
         }
 
-        .btn-view:hover {
-            background-color: #f8f9fa;
-            border-color: #ccc;
+        .btn-card-action:hover {
+            background-color: var(--primary-color);
+            color: white;
         }
 
-        /* --- Slide-Out Notifications Side Drawer --- */
+        /* --- Side Drawer Notifications --- */
         .noti-panel {
             position: fixed;
             top: 0;
@@ -312,9 +343,7 @@ $notification_count = mysqli_num_rows($broadcast_result);
             flex-direction: column;
         }
 
-        .noti-panel.open {
-            right: 0;
-        }
+        .noti-panel.open { right: 0; }
 
         .noti-panel-header {
             display: flex;
@@ -325,52 +354,29 @@ $notification_count = mysqli_num_rows($broadcast_result);
             margin-bottom: 20px;
         }
 
-        .noti-panel-header h2 {
-            margin: 0;
-            font-size: 18px;
-            color: var(--text-main);
-        }
+        .noti-panel-header h2 { margin: 0; font-size: 16px; font-weight: 700; color: var(--text-main); }
 
         .close-noti-btn {
             background: none;
             border: none;
             color: var(--text-muted);
-            font-size: 24px;
+            font-size: 22px;
             cursor: pointer;
         }
 
-        .noti-list-wrapper {
-            flex-grow: 1;
-            overflow-y: auto;
-        }
+        .noti-list-wrapper { flex-grow: 1; overflow-y: auto; }
 
         .noti-item {
             background: #f8f9fa;
             border-left: 3px solid var(--primary-color);
-            padding: 14px;
+            padding: 12px 14px;
             margin-bottom: 12px;
             border-radius: 4px;
         }
 
-        .noti-item h4 {
-            margin: 0 0 6px 0;
-            font-size: 14px;
-            color: var(--text-main);
-        }
-
-        .noti-item p {
-            margin: 0 0 8px 0;
-            font-size: 12px;
-            color: var(--text-muted);
-            line-height: 1.4;
-        }
-
-        .noti-time {
-            font-size: 10px;
-            color: #aaa;
-            display: block;
-            text-align: right;
-        }
+        .noti-item h4 { margin: 0 0 4px 0; font-size: 13px; color: var(--text-main); }
+        .noti-item p { margin: 0 0 6px 0; font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+        .noti-time { font-size: 10px; color: #adb5bd; display: block; text-align: right; }
 
         .noti-overlay {
             position: fixed;
@@ -383,11 +389,30 @@ $notification_count = mysqli_num_rows($broadcast_result);
             z-index: 1000;
         }
 
-        .no-events, .no-noti-msg {
+        .no-records {
             color: var(--text-muted);
-            font-style: italic;
+            font-size: 14px;
             text-align: center;
-            padding: 20px;
+            padding: 30px 15px;
+            background: var(--surface-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+        }
+
+        @media (max-width: 768px) {
+            .quick-nav {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+            .quick-nav-links {
+                width: 100%;
+                flex-direction: column;
+            }
+            .btn-nav {
+                text-align: center;
+                justify-content: center;
+            }
         }
     </style>
 </head>
@@ -396,17 +421,16 @@ $notification_count = mysqli_num_rows($broadcast_result);
 <!-- Header Navigation Bar -->
 <div class="header">
     <div class="header-left">
-        <a href="../index.php" class="btn-home">&larr; Back to Home</a>
+        <a href="../index.php" class="btn-home">&larr; Return to Home</a>
     </div>
 
     <div class="header-title-container">
-        <h1>Citizen Dashboard</h1>
+        <h1>Haritha Portal</h1>
     </div>
 
     <div class="header-right">
-        <!-- Notification Bell Drawer Trigger -->
-        <div class="notification-trigger" onclick="toggleNotificationPanel(true)" title="Announcements">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <div class="notification-trigger" onclick="toggleNotificationPanel(true)" title="System Announcements">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
                 <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
             </svg>
@@ -422,7 +446,7 @@ $notification_count = mysqli_num_rows($broadcast_result);
 
 <div id="notificationSidePanel" class="noti-panel">
     <div class="noti-panel-header">
-        <h2>System Announcements</h2>
+        <h2>Broadcast Notices</h2>
         <button class="close-noti-btn" onclick="toggleNotificationPanel(false)">&times;</button>
     </div>
     
@@ -436,88 +460,75 @@ $notification_count = mysqli_num_rows($broadcast_result);
                 </div>
             <?php endwhile; ?>
         <?php else: ?>
-            <p class="no-noti-msg">No active broadcast notices to display.</p>
+            <p class="no-records">No active broadcast notices at this time.</p>
         <?php endif; ?>
     </div>
 </div>
 
-<div class="main-wrapper">
-    <!-- Top Action Grid -->
-    <div class="actions-grid">
-        <div class="action-card">
-            <div>
-                <div class="card-icon-box">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                </div>
-                <h3>Submit Complaint</h3>
-                <p>Report environmental issues in your local area easily.</p>
-            </div>
-            <a href="make_complaint.php" class="btn-card primary">Submit Complaint</a>
-        </div>
+<div class="dashboard-container">
+    
+    <div class="dashboard-header">
+        <h2>Citizen Management Dashboard</h2>
+        <p>Access municipal environmental services, track filings, and manage volunteer activities.</p>
+    </div>
 
-        <div class="action-card">
-            <div>
-                <div class="card-icon-box">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                </div>
-                <h3>My Complaints</h3>
-                <p>Track the progress and status of your filed reports.</p>
-            </div>
-            <a href="view_complaints.php" class="btn-card outline">My Complaints</a>
-        </div>
-
-        <div class="action-card">
-            <div>
-                <div class="card-icon-box" style="background-color: #fff3e0; color: #e65100;">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
-                </div>
-                <h3>My Certificates</h3>
-                <p>Access and print volunteering contribution certificates.</p>
-            </div>
-            <a href="certificate_view.php" class="btn-card outline">My Certificates</a>
-        </div>
-
-        <div class="action-card">
-            <div>
-                <div class="card-icon-box">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                </div>
-                <h3>Profile</h3>
-                <p>Manage and update your account information details.</p>
-            </div>
-            <a href="update_profile.php" class="btn-card outline">Update Profile</a>
+    <!-- Streamlined Navigation Bar -->
+    <div class="quick-nav">
+        <span class="quick-nav-title">Quick Actions</span>
+        <div class="quick-nav-links">
+            <a href="make_complaint.php" class="btn-nav btn-nav-primary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                File New Complaint
+            </a>
+            <a href="view_complaints.php" class="btn-nav btn-nav-secondary">My Complaints History</a>
+            <a href="certificate_view.php" class="btn-nav btn-nav-secondary">My Certificates</a>
+            <a href="update_profile.php" class="btn-nav btn-nav-secondary">Account Settings</a>
         </div>
     </div>
 
-    <!-- Volunteer Section Grid -->
-    <div class="section-title">Volunteer Opportunities</div>
-    
-    <div class="volunteer-grid">
-        <?php if ($result && mysqli_num_rows($result) > 0): ?>
+    <!-- Active Volunteer Cards Section -->
+    <div class="section-header">
+        <span class="section-title">Open Volunteer Opportunities</span>
+    </div>
+
+    <?php if ($result && mysqli_num_rows($result) > 0): ?>
+        <div class="cards-grid">
             <?php while ($row = mysqli_fetch_assoc($result)): ?>
-                <div class="volunteer-card">
-                    <div class="volunteer-img-wrapper">
+                <div class="event-card">
+                    <div class="card-image-wrapper">
                         <?php if (!empty($row['event_image'])): ?>
-                            <img src="<?php echo htmlspecialchars($row['event_image']); ?>" alt="Event Image" onerror="this.parentNode.style.backgroundColor='#e2e8f0'; this.remove();">
+                            <img src="<?php echo htmlspecialchars($row['event_image']); ?>" alt="Event Thumbnail" onerror="this.style.display='none';">
                         <?php endif; ?>
                     </div>
-                    <div class="volunteer-info">
-                        <h4><?php echo htmlspecialchars($row['event_title']); ?></h4>
-                        <div class="event-meta">
-                            <span>📅 Upcoming Event</span>
+                    <div class="card-body">
+                        <span class="badge-status">Open for Enrollment</span>
+                        <h3 class="card-title"><?php echo htmlspecialchars($row['event_title']); ?></h3>
+                        
+                        <div class="card-meta">
+                            <div class="meta-line">
+                                <span class="meta-label">Target Date:</span>
+                                <span><?php echo !empty($row['event_date']) ? date("M d, Y", strtotime($row['event_date'])) : 'Scheduled'; ?></span>
+                            </div>
+                            <div class="meta-line">
+                                <span class="meta-label">Location:</span>
+                                <span><?php echo !empty($row['location']) ? htmlspecialchars($row['location']) : 'Specified upon registration'; ?></span>
+                            </div>
                         </div>
-                        <a href="view_event.php?id=<?php echo $row['event_id']; ?>" class="btn-view">View Details</a>
+
+                        <a href="view_event.php?id=<?php echo $row['event_id']; ?>" class="btn-card-action">View & Register</a>
                     </div>
                 </div>
             <?php endwhile; ?>
-        <?php else: ?>
-            <p class="no-events">No active volunteer operations listed at this moment.</p>
-        <?php endif; ?>
-    </div>
+        </div>
+    <?php else: ?>
+        <div class="no-records">
+            There are currently no active volunteer operations open for enrollment.
+        </div>
+    <?php endif; ?>
+
 </div>
 
 <script>
-// Keep badge state synced across page dynamic reloads
 document.addEventListener("DOMContentLoaded", function() {
     var badge = document.getElementById('notiBadge');
     if (badge && localStorage.getItem('notificationsViewed') === 'true') {
@@ -525,7 +536,6 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 });
 
-// Control function for sidebar sliding panel
 function toggleNotificationPanel(open) {
     var panel = document.getElementById('notificationSidePanel');
     var overlay = document.getElementById('notiOverlay');

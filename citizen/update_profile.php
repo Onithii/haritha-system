@@ -8,7 +8,7 @@ if (!isset($_SESSION['user_id'])) {
     // Redirect to login if not authenticated
     // header("Location: login.php");
     // exit();
-    $_SESSION['user_id'] = 1; // Temporary fallback for fallback staging
+    $_SESSION['user_id'] = 1; // Temporary fallback for staging
 }
 
 $current_user_id = $_SESSION['user_id'];
@@ -123,7 +123,6 @@ if (isset($_POST['update_profile'])) {
         } else {
             mysqli_stmt_close($stmt);
 
-            // Dynamically construct SQL string depending on whether password is changing
             if (!empty($password)) {
                 $hashed_password = password_hash($password, PASSWORD_BCRYPT);
                 $sql = "UPDATE users SET 
@@ -188,68 +187,74 @@ if (!$user) {
         :root {
             --primary-color: #1b5e20;
             --primary-hover: #144718;
-            --bg-color: #f4f6f8;
+            --bg-color: #f8fafc;
             --card-bg: #ffffff;
-            --text-main: #2c3e50;
-            --text-muted: #6c757d;
-            --border-color: #e9ecef;
-            --shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-            --error-bg: #f8d7da;
-            --error-text: #721c24;
-            --success-bg: #d4edda;
-            --success-text: #155724;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+            --error-bg: #fef2f2;
+            --error-text: #991b1b;
+            --error-border: #fecaca;
+            --success-bg: #f0fdf4;
+            --success-text: #166534;
+            --success-border: #bbf7d0;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
             margin: 0;
             padding: 0;
             color: var(--text-main);
+            -webkit-font-smoothing: antialiased;
         }
 
-        /* --- Modern Top Navbar Header --- */
+        /* --- Navigation Header --- */
         .header {
             background-color: var(--primary-color);
             color: white;
-            padding: 15px 8%;
+            padding: 0 8%;
+            height: 64px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             position: sticky;
             top: 0;
             z-index: 1000;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
         }
 
         .header-left {
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 16px;
         }
 
         .btn-home {
-            color: white;
+            color: #f1f5f9;
             text-decoration: none;
             font-size: 14px;
-            font-weight: 600;
+            font-weight: 500;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            padding: 8px 12px;
+            gap: 8px;
+            padding: 8px 14px;
             border-radius: 6px;
-            transition: background-color 0.2s;
+            background-color: rgba(255, 255, 255, 0.1);
+            transition: background-color 0.2s ease, color 0.2s ease;
         }
 
         .btn-home:hover {
-            background-color: rgba(255, 255, 255, 0.15);
+            background-color: rgba(255, 255, 255, 0.2);
+            color: #ffffff;
         }
 
         .header-title-container h1 {
             margin: 0;
-            font-size: 20px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
         }
 
         .header-right {
@@ -260,10 +265,10 @@ if (!$user) {
 
         .notification-trigger {
             position: relative;
-            background: rgba(255, 255, 255, 0.15);
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -272,31 +277,32 @@ if (!$user) {
         }
 
         .notification-trigger:hover {
-            background: rgba(255, 255, 255, 0.25);
+            background: rgba(255, 255, 255, 0.2);
         }
 
         .notification-badge {
             position: absolute;
-            top: -2px;
-            right: -2px;
-            background-color: #e74c3c;
+            top: -3px;
+            right: -3px;
+            background-color: #ef4444;
             color: white;
             font-size: 11px;
-            font-weight: bold;
-            border-radius: 50%;
-            width: 18px;
+            font-weight: 700;
+            border-radius: 9999px;
+            min-width: 18px;
             height: 18px;
+            padding: 0 4px;
             display: flex;
             align-items: center;
             justify-content: center;
             border: 2px solid var(--primary-color);
         }
 
-        /* --- Split View Container Layout --- */
+        /* --- Split Container Layout --- */
         .container-flex {
             display: flex;
-            max-width: 1200px;
-            margin: 30px auto;
+            max-width: 1280px;
+            margin: 32px auto;
             background: white;
             border-radius: 12px;
             box-shadow: var(--shadow);
@@ -305,26 +311,47 @@ if (!$user) {
         }
 
         .form-container {
-            width: 50%;
-            padding: 35px;
+            width: 55%;
+            padding: 36px;
             box-sizing: border-box;
-            max-height: 82vh;
+            max-height: calc(100vh - 128px);
             overflow-y: auto;
         }
 
-        .form-container h2 {
-            margin-top: 0;
-            margin-bottom: 25px;
-            font-size: 22px;
-            color: var(--text-main);
-            border-bottom: 2px solid #e8f5e9;
+        .form-section-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 24px;
             padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .form-section-header h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .form-section-header svg {
+            color: var(--primary-color);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .form-group-full {
+            grid-column: span 2;
         }
 
         .map-container {
-            width: 50%;
+            width: 45%;
             position: relative;
-            background: #e5e5e5;
+            background: #f1f5f9;
         }
 
         #map {
@@ -333,27 +360,32 @@ if (!$user) {
             min-height: 600px;
         }
 
+        .error-box, .success-box {
+            padding: 14px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
         .error-box {
             background-color: var(--error-bg);
             color: var(--error-text);
-            padding: 12px 16px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            border: 1px solid #f5c6cb;
-            font-size: 14px;
+            border: 1px solid var(--error-border);
         }
 
-        .error-box ul { margin: 0; padding-left: 20px; }
+        .error-box ul { 
+            margin: 0; 
+            padding-left: 18px; 
+        }
 
         .success-box {
             background-color: var(--success-bg);
             color: var(--success-text);
-            padding: 12px 16px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            border: 1px solid #c3e6cb;
-            font-size: 14px;
-            font-weight: 600;
+            border: 1px solid var(--success-border);
+            font-weight: 500;
         }
 
         .form-group {
@@ -362,7 +394,7 @@ if (!$user) {
 
         .form-group label {
             display: block;
-            font-weight: 600;
+            font-weight: 500;
             font-size: 13px;
             margin-bottom: 6px;
             color: var(--text-main);
@@ -370,70 +402,82 @@ if (!$user) {
 
         .form-group input {
             width: 100%;
-            padding: 10px 14px;
+            padding: 10px 12px;
             border-radius: 6px;
-            border: 1px solid #cbd5e1;
+            border: 1px solid var(--border-color);
             font-family: inherit;
             font-size: 14px;
             box-sizing: border-box;
             background-color: #fff;
-            transition: border-color 0.2s, box-shadow 0.2s;
+            transition: all 0.2s ease;
         }
 
         .form-group input:focus {
             outline: none;
             border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(27, 94, 32, 0.1);
+            box-shadow: 0 0 0 3px rgba(27, 94, 32, 0.12);
         }
 
         .map-filled-field {
-            background-color: #f8f9fa;
-            border-left: 4px solid var(--primary-color) !important;
+            background-color: #f8fafc !important;
+            border-left: 3px solid var(--primary-color) !important;
         }
 
         .btn-submit {
             width: 100%;
-            padding: 12px;
+            padding: 12px 16px;
             background: var(--primary-color);
             color: white;
             border: none;
             border-radius: 6px;
             cursor: pointer;
-            margin-top: 15px;
-            font-size: 15px;
+            margin-top: 8px;
+            font-size: 14px;
             font-weight: 600;
-            transition: background 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background 0.2s ease, transform 0.1s ease;
         }
 
         .btn-submit:hover {
             background: var(--primary-hover);
         }
 
+        .btn-submit:active {
+            transform: translateY(1px);
+        }
+
         .map-instruction {
             position: absolute;
-            top: 15px;
+            top: 16px;
             left: 55px;
             z-index: 1000;
-            background: rgba(27, 94, 32, 0.9);
+            background: rgba(30, 41, 59, 0.85);
+            backdrop-filter: blur(4px);
             color: white;
             padding: 8px 14px;
             border-radius: 6px;
-            font-weight: 600;
-            font-size: 13px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            font-weight: 500;
+            font-size: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
             pointer-events: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        /* --- Slide-Out Notifications Side Drawer --- */
+        /* --- Drawer Panel --- */
         .noti-panel {
             position: fixed;
             top: 0;
             right: -400px;
-            width: 360px;
+            width: 380px;
             height: 100%;
             background-color: #ffffff;
-            box-shadow: -4px 0 20px rgba(0,0,0,0.15);
-            transition: right 0.3s ease;
+            box-shadow: -10px 0 25px -5px rgba(0, 0, 0, 0.1);
+            transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
             z-index: 1001;
             padding: 24px;
             box-sizing: border-box;
@@ -448,33 +492,54 @@ if (!$user) {
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid var(--border-color);
-            padding-bottom: 15px;
+            padding-bottom: 16px;
             margin-bottom: 20px;
         }
 
-        .noti-panel-header h2 { margin: 0; font-size: 18px; color: var(--text-main); }
+        .noti-panel-header h2 { 
+            margin: 0; 
+            font-size: 18px; 
+            font-weight: 600;
+            color: var(--text-main); 
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
 
         .close-noti-btn {
             background: none;
             border: none;
             color: var(--text-muted);
-            font-size: 24px;
             cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .close-noti-btn:hover {
+            background: #f1f5f9;
+            color: var(--text-main);
         }
 
         .noti-list-wrapper { flex-grow: 1; overflow-y: auto; }
 
         .noti-item {
-            background: #f8f9fa;
+            background: #f8fafc;
             border-left: 3px solid var(--primary-color);
             padding: 14px;
             margin-bottom: 12px;
-            border-radius: 4px;
+            border-radius: 6px;
+            border-top: 1px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
         }
 
-        .noti-item h4 { margin: 0 0 6px 0; font-size: 14px; color: var(--text-main); }
-        .noti-item p { margin: 0 0 8px 0; font-size: 12px; color: var(--text-muted); line-height: 1.4; }
-        .noti-time { font-size: 10px; color: #aaa; display: block; text-align: right; }
+        .noti-item h4 { margin: 0 0 6px 0; font-size: 14px; font-weight: 600; color: var(--text-main); }
+        .noti-item p { margin: 0 0 8px 0; font-size: 13px; color: var(--text-muted); line-height: 1.4; }
+        .noti-time { font-size: 11px; color: #94a3b8; display: block; text-align: right; }
 
         .noti-overlay {
             position: fixed;
@@ -482,16 +547,26 @@ if (!$user) {
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.2);
+            background: rgba(15, 23, 42, 0.3);
+            backdrop-filter: blur(2px);
             display: none;
             z-index: 1000;
         }
 
-        .no-noti-msg { color: var(--text-muted); font-style: italic; text-align: center; padding: 20px; }
+        .no-noti-msg { 
+            color: var(--text-muted); 
+            font-style: italic; 
+            text-align: center; 
+            padding: 40px 20px;
+            font-size: 14px; 
+        }
 
-        @media (max-width: 900px) {
+        @media (max-width: 960px) {
             .container-flex {
-                flex-direction: column;
+                flex-direction: column-reverse;
+                margin: 0;
+                border-radius: 0;
+                border: none;
             }
             .form-container, .map-container {
                 width: 100%;
@@ -500,7 +575,13 @@ if (!$user) {
                 max-height: none;
             }
             #map {
-                min-height: 400px;
+                min-height: 380px;
+            }
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            .form-group-full {
+                grid-column: span 1;
             }
         }
     </style>
@@ -508,35 +589,43 @@ if (!$user) {
 <body>
 
 <!-- Header Navigation Bar -->
-<div class="header">
+<header class="header">
     <div class="header-left">
-        <a href="../citizen/citizen_dash.php" class="btn-home">&larr; Back to Dashboard</a>
+        <a href="../citizen/citizen_dash.php" class="btn-home">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+            Dashboard
+        </a>
     </div>
 
     <div class="header-title-container">
-        <h1>Citizen Dashboard</h1>
+        <h1>Citizen Portal</h1>
     </div>
 
     <div class="header-right">
         <div class="notification-trigger" onclick="toggleNotificationPanel(true)" title="Announcements">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
+                <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
             </svg>
             <?php if ($notification_count > 0): ?>
                 <div class="notification-badge" id="notiBadge"><?php echo $notification_count; ?></div>
             <?php endif; ?>
         </div>
     </div>
-</div>
+</header>
 
 <!-- Notification Overlay & Drawer Panel -->
 <div id="notiOverlay" class="noti-overlay" onclick="toggleNotificationPanel(false)"></div>
 
-<div id="notificationSidePanel" class="noti-panel">
+<aside id="notificationSidePanel" class="noti-panel">
     <div class="noti-panel-header">
-        <h2>System Announcements</h2>
-        <button class="close-noti-btn" onclick="toggleNotificationPanel(false)">&times;</button>
+        <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            Announcements
+        </h2>
+        <button class="close-noti-btn" onclick="toggleNotificationPanel(false)" aria-label="Close">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
     </div>
     
     <div class="noti-list-wrapper">
@@ -552,14 +641,18 @@ if (!$user) {
             <p class="no-noti-msg">No active broadcast notices to display.</p>
         <?php endif; ?>
     </div>
-</div>
+</aside>
 
 <div class="container-flex">
-    <div class="form-container">
-        <h2>Update Profile</h2>
+    <main class="form-container">
+        <div class="form-section-header">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <h2>Update Profile Details</h2>
+        </div>
 
         <?php if (!empty($errors)): ?>
             <div class="error-box">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
                 <ul>
                     <?php foreach ($errors as $error): ?>
                         <li><?php echo htmlspecialchars($error); ?></li>
@@ -570,75 +663,84 @@ if (!$user) {
 
         <?php if (!empty($success_message)): ?>
             <div class="success-box">
-                <?php echo htmlspecialchars($success_message); ?>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <div><?php echo htmlspecialchars($success_message); ?></div>
             </div>
         <?php endif; ?>
 
         <form method="POST" action="">
-            <div class="form-group">
-                <label for="f_name">First Name *</label>
-                <input type="text" id="f_name" name="f_name" placeholder="First Name" value="<?php echo htmlspecialchars($user['f_name']); ?>" required>
-            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="f_name">First Name *</label>
+                    <input type="text" id="f_name" name="f_name" value="<?php echo htmlspecialchars($user['f_name']); ?>" required>
+                </div>
 
-            <div class="form-group">
-                <label for="l_name">Last Name *</label>
-                <input type="text" id="l_name" name="l_name" placeholder="Last Name" value="<?php echo htmlspecialchars($user['l_name']); ?>" required>
-            </div>
+                <div class="form-group">
+                    <label for="l_name">Last Name *</label>
+                    <input type="text" id="l_name" name="l_name" value="<?php echo htmlspecialchars($user['l_name']); ?>" required>
+                </div>
 
-            <div class="form-group">
-                <label for="nic">NIC Number *</label>
-                <input type="text" id="nic" name="nic" placeholder="NIC Number" value="<?php echo htmlspecialchars($user['nic']); ?>" required>
-            </div>
+                <div class="form-group">
+                    <label for="nic">NIC Number *</label>
+                    <input type="text" id="nic" name="nic" value="<?php echo htmlspecialchars($user['nic']); ?>" required>
+                </div>
 
-            <div class="form-group">
-                <label for="phone_number">Phone Number *</label>
-                <input type="text" id="phone_number" name="phone_number" placeholder="Phone Number" value="<?php echo htmlspecialchars($user['phone_number']); ?>" required>
-            </div>
+                <div class="form-group">
+                    <label for="phone_number">Phone Number *</label>
+                    <input type="text" id="phone_number" name="phone_number" value="<?php echo htmlspecialchars($user['phone_number']); ?>" required>
+                </div>
 
-            <div class="form-group">
-                <label for="email">Email Address *</label>
-                <input type="email" id="email" name="email" placeholder="Email Address" value="<?php echo htmlspecialchars($user['email']); ?>" required>
-            </div>
+                <div class="form-group form-group-full">
+                    <label for="email">Email Address *</label>
+                    <input type="email" id="email" name="email" value="<?php echo htmlspecialchars($user['email']); ?>" required>
+                </div>
 
-            <div class="form-group">
-                <label for="username">Username *</label>
-                <input type="text" id="username" name="username" placeholder="Username" value="<?php echo htmlspecialchars($user['username']); ?>" required>
-            </div>
+                <div class="form-group">
+                    <label for="username">Username *</label>
+                    <input type="text" id="username" name="username" value="<?php echo htmlspecialchars($user['username']); ?>" required>
+                </div>
 
-            <div class="form-group">
-                <label for="password">New Password</label>
-                <input type="password" id="password" name="password" placeholder="Leave blank to keep existing password">
-            </div>
+                <div class="form-group">
+                    <label for="password">New Password</label>
+                    <input type="password" id="password" name="password" placeholder="Leave blank to keep current">
+                </div>
 
-            <div class="form-group">
-                <label for="address">Street Address *</label>
-                <input type="text" id="address" name="address" placeholder="Street Address" value="<?php echo htmlspecialchars($user['address']); ?>" required>
-            </div>
+                <div class="form-group form-group-full">
+                    <label for="address">Street Address *</label>
+                    <input type="text" id="address" name="address" value="<?php echo htmlspecialchars($user['address']); ?>" required>
+                </div>
 
-            <div class="form-group">
-                <label for="gn_division">GN Division *</label>
-                <input type="text" id="gn_division" name="gn_division" placeholder="GN Division" class="map-filled-field" value="<?php echo htmlspecialchars($user['gn_division']); ?>" required>
-            </div>
+                <div class="form-group">
+                    <label for="gn_division">GN Division *</label>
+                    <input type="text" id="gn_division" name="gn_division" class="map-filled-field" value="<?php echo htmlspecialchars($user['gn_division']); ?>" required>
+                </div>
 
-            <div class="form-group">
-                <label for="ds_division">DS Division *</label>
-                <input type="text" id="ds_division" name="ds_division" placeholder="DS Division" class="map-filled-field" value="<?php echo htmlspecialchars($user['ds_division']); ?>" required>
-            </div>
+                <div class="form-group">
+                    <label for="ds_division">DS Division *</label>
+                    <input type="text" id="ds_division" name="ds_division" class="map-filled-field" value="<?php echo htmlspecialchars($user['ds_division']); ?>" required>
+                </div>
 
-            <div class="form-group">
-                <label for="district">District *</label>
-                <input type="text" id="district" name="district" placeholder="District" class="map-filled-field" value="<?php echo htmlspecialchars($user['district']); ?>" required>
+                <div class="form-group form-group-full">
+                    <label for="district">District *</label>
+                    <input type="text" id="district" name="district" class="map-filled-field" value="<?php echo htmlspecialchars($user['district']); ?>" required>
+                </div>
             </div>
             
             <input type="hidden" id="office_latitude" name="office_latitude" value="<?php echo htmlspecialchars($user['office_latitude']); ?>">
             <input type="hidden" id="office_longitude" name="office_longitude" value="<?php echo htmlspecialchars($user['office_longitude']); ?>">
             
-            <button type="submit" name="update_profile" class="btn-submit">Save Changes</button>
+            <button type="submit" name="update_profile" class="btn-submit">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                Save Changes
+            </button>
         </form>
-    </div>
+    </main>
 
     <div class="map-container">
-        <div class="map-instruction">📍 Click map or search to alter residential location</div>
+        <div class="map-instruction">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+            Click map or search location to set position
+        </div>
         <div id="map"></div>
     </div>
 </div>
@@ -652,7 +754,6 @@ if (!$user) {
         L.latLng(9.9, 82.0)  
     );
 
-    // Pull database coordinates to position map viewport focus safely
     const existingLat = parseFloat(document.getElementById('office_latitude').value) || 7.8731;
     const existingLng = parseFloat(document.getElementById('office_longitude').value) || 80.7718;
     const initialZoom = (document.getElementById('office_latitude').value) ? 14 : 8;
@@ -669,7 +770,6 @@ if (!$user) {
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    // Pre-populate with marker pin pointing to saved location if it exists
     let marker;
     if (document.getElementById('office_latitude').value) {
         marker = L.marker([existingLat, existingLng]).addTo(map);
@@ -677,7 +777,7 @@ if (!$user) {
 
     const geocoder = L.Control.geocoder({
         defaultMarkGeocode: false,
-        placeholder: "Search Town, Village or City..."
+        placeholder: "Search location..."
     })
     .on('markgeocode', function(e) {
         const latlng = e.geocode.center;
@@ -700,22 +800,35 @@ if (!$user) {
             marker = L.marker([lat, lng]).addTo(map);
         }
 
-        // Call current update script structure dynamically
+        // Visual indicator that fields are populating
+        const gnField = document.getElementById('gn_division');
+        const dsField = document.getElementById('ds_division');
+        const districtField = document.getElementById('district');
+
+        gnField.placeholder = "Loading...";
+        dsField.placeholder = "Loading...";
+        districtField.placeholder = "Loading...";
+
         fetch(`update_profile.php?action=geocode&lat=${lat}&lng=${lng}`)
             .then(response => response.json())
             .then(data => {
                 if(data.success) {
-                    document.getElementById('gn_division').value = data.gn_division || '';
-                    document.getElementById('ds_division').value = data.ds_division || '';
-                    document.getElementById('district').value = data.district || '';
+                    gnField.value = data.gn_division || '';
+                    dsField.value = data.ds_division || '';
+                    districtField.value = data.district || '';
                 }
             })
             .catch(error => {
-                console.error('Mapping backend helper exception:', error);
+                console.error('Geocoding error:', error);
+            })
+            .finally(() => {
+                gnField.placeholder = "GN Division";
+                dsField.placeholder = "DS Division";
+                districtField.placeholder = "District";
             });
     }
 
-    // Drawer Toggle Logic
+    // Notification Drawer Control
     document.addEventListener("DOMContentLoaded", function() {
         var badge = document.getElementById('notiBadge');
         if (badge && localStorage.getItem('notificationsViewed') === 'true') {
