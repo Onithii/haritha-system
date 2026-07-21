@@ -213,6 +213,7 @@ if (!$user) {
             text-align: center;
             color: #2e7d32;
             margin-top: 0;
+            margin-bottom: 15px;
         }
         .error-box {
             background-color: #ffebee;
@@ -244,7 +245,7 @@ if (!$user) {
             background-color: #fafdfa;
             border-left: 4px solid #4caf50;
         }
-        button {
+        button, .btn-back {
             width: 100%;
             padding: 12px;
             background: #2e7d32;
@@ -253,19 +254,26 @@ if (!$user) {
             border-radius: 5px;
             cursor: pointer;
             margin-top: 12px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: bold;
+            box-sizing: border-box;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            transition: background 0.2s;
         }
         button:hover { background: #1b5e20; }
-        .back-link {
-            display: block;
-            text-align: center;
-            margin-top: 15px;
+        .btn-back {
+            background: #ffffff;
             color: #2e7d32;
-            text-decoration: none;
-            font-size: 14px;
+            border: 2px solid #2e7d32;
+            margin-top: 0;
+            margin-bottom: 20px;
         }
-        .back-link:hover { text-decoration: underline; }
+        .btn-back:hover {
+            background: #e8f5e9;
+            color: #1b5e20;
+        }
         .map-instruction {
             position: absolute;
             top: 15px;
@@ -287,6 +295,7 @@ if (!$user) {
 <div class="container-flex">
     <div class="form-container">
         <h2>Update Profile</h2>
+        <a href="../citizen/citizen_dash.php" class="btn-back">&larr; Back to Dashboard</a>
 
         <?php if (!empty($errors)): ?>
             <div class="error-box">
@@ -322,7 +331,6 @@ if (!$user) {
             <input type="hidden" id="office_longitude" name="office_longitude" value="<?php echo htmlspecialchars($user['office_longitude']); ?>">
             
             <button type="submit" name="update_profile">Save Changes</button>
-            <a href="../citizen/citizen_dash.php" class="back-link">← Return to Dashboard</a>
         </form>
     </div>
 
