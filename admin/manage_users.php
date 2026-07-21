@@ -64,7 +64,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action_type']) && $_PO
                 $searched_user = mysqli_fetch_assoc(mysqli_stmt_get_result($refetch_stmt));
                 mysqli_stmt_close($refetch_stmt);
             } else {
-                $error = "Failed to execution update sequence against database.";
+                $error = "Failed execution update sequence against database.";
             }
             mysqli_stmt_close($status_stmt);
         }
@@ -115,72 +115,380 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && !isset($_POST['action_type'])) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Admin - Manage Users</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage User Accounts - Admin Control</title>
+    
+    <!-- External GIS Mapping Styles -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
-    <link rel="stylesheet" href="../css/style.css">
+    
     <style>
-       
+        :root {
+            --primary-color: #1b5e20;
+            --primary-hover: #144718;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+            --radius: 8px;
+            --danger-color: #dc2626;
+            --danger-hover: #b91c1c;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 0;
+            color: var(--text-main);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* --- Navigation Bar --- */
+        .header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 16px 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-title h1 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .header-title p {
+            margin: 4px 0 0 0;
+            font-size: 13px;
+            opacity: 0.85;
+        }
+
+        .btn-top-back {
+            background-color: rgba(255, 255, 255, 0.12);
+            color: #ffffff;
+            padding: 8px 16px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.2s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-top-back:hover {
+            background-color: rgba(255, 255, 255, 0.22);
+        }
+
+        .layout-wrapper {
+            max-width: 1000px;
+            margin: 32px auto;
+            padding: 0 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+
+        /* --- Content Panels --- */
+        .panel-card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow);
+            padding: 28px;
+        }
+
+        .panel-card h2 {
+            margin-top: 0;
+            margin-bottom: 6px;
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .panel-subtitle {
+            margin-top: 0;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* --- Alerts --- */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 20px;
+        }
+
+        .alert-error {
+            background-color: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .alert-success {
+            background-color: #f0fdf4;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+
+        /* --- Forms & Field Sets --- */
+        .row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text-main);
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            font-size: 13px;
+            color: var(--text-main);
+            background-color: #fff;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(27, 94, 32, 0.1);
+        }
+
+        .form-group input[readonly] {
+            background-color: #f8fafc;
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        .map-instruction {
+            display: block;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        #map {
+            height: 320px;
+            width: 100%;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 18px;
+            z-index: 1;
+        }
+
+        .btn-submit {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-submit:hover {
+            background-color: var(--primary-hover);
+        }
+
+        /* --- Search & Action Card Styles --- */
+        .search-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .search-row input {
+            flex-grow: 1;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .search-row input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(27, 94, 32, 0.1);
+        }
+
+        .result-card {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 6px;
+            background-color: #f8fafc;
+            border: 1px solid var(--border-color);
+        }
+
+        .result-card h3 {
+            margin-top: 0;
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .result-meta-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px 20px;
+            font-size: 13px;
+            margin-bottom: 20px;
+        }
+
+        .result-meta-item {
+            color: var(--text-muted);
+        }
+
+        .result-meta-item strong {
+            color: var(--text-main);
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        /* --- Badges --- */
+        .badge {
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            display: inline-block;
+        }
+
+        .badge-active { background-color: #dcfce7; color: #166534; }
+        .badge-deactivated { background-color: #fee2e2; color: #991b1b; }
+
+        .btn-red {
+            background-color: var(--danger-color);
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .btn-red:hover {
+            background-color: var(--danger-hover);
+        }
+
+        .btn-green {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .btn-green:hover {
+            background-color: var(--primary-hover);
+        }
     </style>
 </head>
 <body>
 
-<div class="header">
-    <a href="admin_dash.php" class="back-btn">⬅ Back to Dashboard</a>
-    <h1>System Admin Control</h1>
-    <p>Account Provisioning & Geolocation Mapping</p>
-</div>
+<header class="header">
+    <div class="header-title">
+        <h1>User Account Administration</h1>
+        <p>Account Provisioning & Geolocation Mapping</p>
+    </div>
+    <a href="admin_dash.php" class="btn-top-back">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        Dashboard
+    </a>
+</header>
 
-<div class="form-container">
-    <h2>Add New System User Account</h2>
-    
-    <?php if(!empty($error) && !isset($_POST['action_type'])): ?>
-        <div class="alert alert-error" style="background:#ffebee; color:#c62828; padding:10px; margin-bottom:15px; border-radius:4px;"><?php echo htmlspecialchars($error); ?></div>
-    <?php endif; ?>
-    <?php if(!empty($success) && !isset($_POST['action_type'])): ?>
-        <div class="alert alert-success" style="background:#e8f5e9; color:#2e7d32; padding:10px; margin-bottom:15px; border-radius:4px;"><?php echo htmlspecialchars($success); ?></div>
-    <?php endif; ?>
+<main class="layout-wrapper">
 
-    <form method="POST" action="">
-        <div class="row">
-            <div class="form-group">
-                <label>First Name *</label>
-                <input type="text" name="f_name" required placeholder="e.g., Haritha">
-            </div>
-            <div class="form-group">
-                <label>Last Name *</label>
-                <input type="text" name="l_name" required placeholder="e.g., Perera">
-            </div>
-        </div>
+    <!-- Provisioning Section -->
+    <section class="panel-card">
+        <h2>Add System User Account</h2>
+        <p class="panel-subtitle">Create new personnel records and associate GIS workspace metrics.</p>
+        
+        <?php if(!empty($error) && !isset($_POST['action_type'])): ?>
+            <div class="alert alert-error"><?php echo htmlspecialchars($error); ?></div>
+        <?php endif; ?>
+        <?php if(!empty($success) && !isset($_POST['action_type'])): ?>
+            <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
+        <?php endif; ?>
 
-        <div class="row">
-            <div class="form-group">
-                <label>NIC Number *</label>
-                <input type="text" name="nic" required placeholder="e.g., 199912345678">
+        <form method="POST" action="">
+            <div class="row">
+                <div class="form-group">
+                    <label>First Name *</label>
+                    <input type="text" name="f_name" required placeholder="e.g., Haritha">
+                </div>
+                <div class="form-group">
+                    <label>Last Name *</label>
+                    <input type="text" name="l_name" required placeholder="e.g., Perera">
+                </div>
             </div>
-            <div class="form-group">
-                <label>Phone Number *</label>
-                <input type="text" name="phone_number" required placeholder="e.g., 0771234567">
-            </div>
-        </div>
 
-        <div class="form-group">
-            <label>Email Address *</label>
-            <input type="email" name="email" required placeholder="e.g., contact@domain.com">
-        </div>
-
-        <div class="row">
-            <div class="form-group">
-                <label>Username (System Login ID) *</label>
-                <input type="text" name="username" required placeholder="e.g., gn_cinnamon">
+            <div class="row">
+                <div class="form-group">
+                    <label>NIC Number *</label>
+                    <input type="text" name="nic" required placeholder="e.g., 199912345678">
+                </div>
+                <div class="form-group">
+                    <label>Phone Number *</label>
+                    <input type="text" name="phone_number" required placeholder="e.g., 0771234567">
+                </div>
             </div>
-            <div class="form-group">
-                <label>Default Password *</label>
-                <input type="password" name="password" required placeholder="Minimum 6 characters">
-            </div>
-        </div>
 
-        <div class="row">
+            <div class="form-group">
+                <label>Email Address *</label>
+                <input type="email" name="email" required placeholder="e.g., contact@domain.com">
+            </div>
+
+            <div class="row">
+                <div class="form-group">
+                    <label>Username (System Login ID) *</label>
+                    <input type="text" name="username" required placeholder="e.g., gn_cinnamon">
+                </div>
+                <div class="form-group">
+                    <label>Default Password *</label>
+                    <input type="password" name="password" required placeholder="Minimum 6 characters">
+                </div>
+            </div>
+
             <div class="form-group">
                 <label>Assigned System Role *</label>
                 <select name="role_id" required id="role_id">
@@ -191,107 +499,128 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && !isset($_POST['action_type'])) {
                     <option value="4">Divisional Secretariat (DS)</option>
                 </select>
             </div>
-        </div>
 
-        <div class="form-group">
-            <label>Select Workspace / Office Location on Map</label>
-            <span class="map-instruction">Use the search magnifying glass icon on the map to find a town/address, or drag the marker pin manually.</span>
-            <div id="map"></div>
-        </div>
-
-        <div class="form-group">
-            <label>Auto-Resolved Physical Address (Stored in 'address' column)</label>
-            <input type="text" id="office_address" name="office_address" readonly placeholder="Click map or search to resolve address metrics">
-        </div>
-
-        <div class="row">
             <div class="form-group">
-                <label>GN Division</label>
-                <input type="text" id="gn_division" name="gn_division" readonly placeholder="Auto-populated">
+                <label>Workspace / Office Location Mapping</label>
+                <span class="map-instruction">Use the search icon on the map to query locations or drag the marker directly.</span>
+                <div id="map"></div>
             </div>
+
             <div class="form-group">
-                <label>DS Division</label>
-                <input type="text" id="ds_division" name="ds_division" readonly placeholder="Auto-populated">
-            </div>
-            <div class="form-group">
-                <label>District</label>
-                <input type="text" id="district" name="district" readonly placeholder="Auto-populated">
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="form-group">
-                <label>Calculated Office Latitude</label>
-                <input type="text" id="latitude" name="latitude" readonly placeholder="Auto-calculated">
-            </div>
-            <div class="form-group">
-                <label>Calculated Office Longitude</label>
-                <input type="text" id="longitude" name="longitude" readonly placeholder="Auto-calculated">
-            </div>
-        </div>
-
-        <button type="submit" class="submit-btn">Provision Account</button>
-    </form>
-</div>
-
-<div class="management-container">
-    <h2>Search & Revoke User Sessions</h2>
-    <p style="font-size: 0.85em; color: #666; margin-bottom: 10px;">Query an active profile by email to change authentication permissions.</p>
-
-    <?php if(!empty($error) && isset($_POST['action_type'])): ?>
-        <div class="alert alert-error" style="background:#ffebee; color:#c62828; padding:10px; margin-bottom:15px; border-radius:4px; font-size:0.9em;"><?php echo htmlspecialchars($error); ?></div>
-    <?php endif; ?>
-    <?php if(!empty($success) && isset($_POST['action_type'])): ?>
-        <div class="alert alert-success" style="background:#e8f5e9; color:#2e7d32; padding:10px; margin-bottom:15px; border-radius:4px; font-size:0.9em;"><?php echo htmlspecialchars($success); ?></div>
-    <?php endif; ?>
-
-    <form method="POST" action="">
-        <input type="hidden" name="action_type" value="search_user">
-        <div class="search-row">
-            <input type="email" name="search_email" required placeholder="Enter exact email address (e.g., perera@domain.com)" value="<?php echo htmlspecialchars($search_query); ?>">
-            <button type="submit" class="search-btn">Search Profile</button>
-        </div>
-    </form>
-
-    <?php if ($searched_user): 
-        $role_label = "Citizen";
-        if($searched_user['role_id'] == 2) $role_label = "Grama Niladhari (GN)";
-        if($searched_user['role_id'] == 3) $role_label = "Local Authority (LA)";
-        if($searched_user['role_id'] == 5) $role_label = "Divisional Secretariat (DS)";
-    ?>
-        <div class="result-card">
-            <h3>Search Result Mapping</h3>
-            <hr style="border:0; border-top:1px solid #e0e0e0; margin:10px 0;">
-            <div class="result-meta">
-                <strong>Full Name:</strong> <?php echo htmlspecialchars($searched_user['f_name'] . ' ' . $searched_user['l_name']); ?><br>
-                <strong>System ID:</strong> <code><?php echo htmlspecialchars($searched_user['username']); ?></code><br>
-                <strong>Email Address:</strong> <?php echo htmlspecialchars($searched_user['email']); ?><br>
-                <strong>Assigned Role:</strong> <?php echo $role_label; ?><br>
-                <strong>DS Context Area:</strong> <?php echo htmlspecialchars($searched_user['ds_division'] ?? 'Global Root'); ?><br>
-                <strong>System Access State:</strong> 
-                <span class="badge <?php echo ($searched_user['status'] === 'ACTIVE') ? 'badge-active' : 'badge-deactivated'; ?>">
-                    <?php echo htmlspecialchars($searched_user['status']); ?>
-                </span>
+                <label>Auto-Resolved Physical Address</label>
+                <input type="text" id="office_address" name="office_address" readonly placeholder="Click map or search to resolve address metrics">
             </div>
 
-            <form method="POST" action="" onsubmit="return confirm('Enforce access permission status change for this user account?');">
-                <input type="hidden" name="action_type" value="toggle_status">
-                <input type="hidden" name="target_user_id" value="<?php echo $searched_user['user_id']; ?>">
-                <input type="hidden" name="current_status" value="<?php echo $searched_user['status']; ?>">
-                <input type="hidden" name="search_email" value="<?php echo htmlspecialchars($searched_user['email']); ?>">
+            <div class="row">
+                <div class="form-group">
+                    <label>GN Division</label>
+                    <input type="text" id="gn_division" name="gn_division" readonly placeholder="Auto-populated">
+                </div>
+                <div class="form-group">
+                    <label>DS Division</label>
+                    <input type="text" id="ds_division" name="ds_division" readonly placeholder="Auto-populated">
+                </div>
+                <div class="form-group">
+                    <label>District</label>
+                    <input type="text" id="district" name="district" readonly placeholder="Auto-populated">
+                </div>
+            </div>
 
-                <?php if ($searched_user['status'] === 'ACTIVE'): ?>
-                    <button type="submit" class="status-action-btn btn-red">Deactivate User Account</button>
-                <?php else: ?>
-                    <button type="submit" class="status-action-btn btn-green">Reactivate User Account</button>
-                <?php endif; ?>
-            </form>
-        </div>
-    <?php endif; ?>
-</div>
+            <div class="row">
+                <div class="form-group">
+                    <label>Calculated Office Latitude</label>
+                    <input type="text" id="latitude" name="latitude" readonly placeholder="Auto-calculated">
+                </div>
+                <div class="form-group">
+                    <label>Calculated Office Longitude</label>
+                    <input type="text" id="longitude" name="longitude" readonly placeholder="Auto-calculated">
+                </div>
+            </div>
+
+            <button type="submit" class="btn-submit">Provision Account</button>
+        </form>
+    </section>
+
+    <!-- Account Management / Status Toggling Section -->
+    <section class="panel-card">
+        <h2>Search & Manage User Access</h2>
+        <p class="panel-subtitle">Query registered profiles by email address to adjust authentication and access permissions.</p>
+
+        <?php if(!empty($error) && isset($_POST['action_type'])): ?>
+            <div class="alert alert-error"><?php echo htmlspecialchars($error); ?></div>
+        <?php endif; ?>
+        <?php if(!empty($success) && isset($_POST['action_type'])): ?>
+            <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
+        <?php endif; ?>
+
+        <form method="POST" action="">
+            <input type="hidden" name="action_type" value="search_user">
+            <div class="search-row">
+                <input type="email" name="search_email" required placeholder="Enter exact email address (e.g., perera@domain.com)" value="<?php echo htmlspecialchars($search_query); ?>">
+                <button type="submit" class="btn-submit">Search Profile</button>
+            </div>
+        </form>
+
+        <?php if ($searched_user): 
+            $role_label = "Citizen";
+            if($searched_user['role_id'] == 2) $role_label = "Grama Niladhari (GN)";
+            if($searched_user['role_id'] == 3) $role_label = "Local Authority (LA)";
+            if($searched_user['role_id'] == 4) $role_label = "Divisional Secretariat (DS)";
+            if($searched_user['role_id'] == 5) $role_label = "System Administrator";
+        ?>
+            <div class="result-card">
+                <h3>Matched Profile</h3>
+                
+                <div class="result-meta-grid">
+                    <div class="result-meta-item">
+                        <strong>Full Name</strong>
+                        <?php echo htmlspecialchars($searched_user['f_name'] . ' ' . $searched_user['l_name']); ?>
+                    </div>
+                    <div class="result-meta-item">
+                        <strong>System ID</strong>
+                        <code><?php echo htmlspecialchars($searched_user['username']); ?></code>
+                    </div>
+                    <div class="result-meta-item">
+                        <strong>Email Address</strong>
+                        <?php echo htmlspecialchars($searched_user['email']); ?>
+                    </div>
+                    <div class="result-meta-item">
+                        <strong>Assigned Role</strong>
+                        <?php echo htmlspecialchars($role_label); ?>
+                    </div>
+                    <div class="result-meta-item">
+                        <strong>DS Division Context</strong>
+                        <?php echo htmlspecialchars($searched_user['ds_division'] ?? 'Global Root'); ?>
+                    </div>
+                    <div class="result-meta-item">
+                        <strong>Access Status</strong>
+                        <span class="badge <?php echo ($searched_user['status'] === 'ACTIVE') ? 'badge-active' : 'badge-deactivated'; ?>">
+                            <?php echo htmlspecialchars($searched_user['status']); ?>
+                        </span>
+                    </div>
+                </div>
+
+                <form method="POST" action="" onsubmit="return confirm('Enforce access permission status change for this user account?');">
+                    <input type="hidden" name="action_type" value="toggle_status">
+                    <input type="hidden" name="target_user_id" value="<?php echo $searched_user['user_id']; ?>">
+                    <input type="hidden" name="current_status" value="<?php echo $searched_user['status']; ?>">
+                    <input type="hidden" name="search_email" value="<?php echo htmlspecialchars($searched_user['email']); ?>">
+
+                    <?php if ($searched_user['status'] === 'ACTIVE'): ?>
+                        <button type="submit" class="btn-red">Deactivate User Account</button>
+                    <?php else: ?>
+                        <button type="submit" class="btn-green">Reactivate User Account</button>
+                    <?php endif; ?>
+                </form>
+            </div>
+        <?php endif; ?>
+    </section>
+
+</main>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 <script src="../js/admin_map.js"></script>
+
 </body>
 </html>
