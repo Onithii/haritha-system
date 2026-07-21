@@ -283,8 +283,8 @@ if ($authorities_result) {
         <div class="navbar">
             <div class="logo">හරිත<span>.</span></div>
             <div class="nav-buttons">
-                <a href="login.html" class="btn btn-login">Login</a>
-                <a href="register.html" class="btn btn-register">Register</a>
+                <a href="auth/login.php" class="btn btn-login">Login</a>
+                <a href="auth/register.php" class="btn btn-register">Register</a>
             </div>
         </div>
 
