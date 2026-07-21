@@ -143,7 +143,7 @@ if (!empty($report_type) && $report_type == 'complaint_summary') {
 <body>
 
 <div class="header">
-    <a href="dashboard.php" class="btn-back">← Back to Panel</a>
+    <a href="gn_dash.php" class="btn-back">← Back to Panel</a>
     <h1>Haritha Division Performance Engine</h1>
     <p>Local Jurisdiction Environmental Tracking & Metrics Panel</p>
 </div>
