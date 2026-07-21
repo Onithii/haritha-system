@@ -403,7 +403,9 @@ $notification_count = mysqli_num_rows($broadcast_result);
     <div class="card">
         <h3>My Complaints</h3>
         <p>View and track the complaints you have submitted.</p>
-        <button type="button">View Complaints</button>
+        <a href="view_complaints.php">
+            <button type="button">View Complaints</button>
+        </a>
     </div>
 
     <div class="card">
