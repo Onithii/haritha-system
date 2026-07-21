@@ -102,7 +102,7 @@ if (isset($_GET['ajax_load'])) {
                     <td>' . $badge . '</td>
                     <td>' . date('M d, Y', strtotime($complaint['created_at'])) . '</td>
                     <td>
-                        <a href="view_complaint_details.php?id=' . $complaint['complaint_id'] . '" class="table-action-link">
+                        <a href="view_complaints.php?id=' . $complaint['complaint_id'] . '" class="table-action-link">
                             View Details
                         </a>
                     </td>
@@ -703,7 +703,7 @@ $total_records = $count_res['total'];
                             <td><?php echo renderStatusBadge($complaint['status_id'], $status_map); ?></td>
                             <td><?php echo date('M d, Y', strtotime($complaint['created_at'])); ?></td>
                             <td>
-                                <a href="view_complaint_details.php?id=<?php echo $complaint['complaint_id']; ?>" class="table-action-link">View Details</a>
+                                <a href="view_complaints.php?id=<?php echo $complaint['complaint_id']; ?>" class="table-action-link">View Details</a>
                             </td>
                         </tr>
                     <?php endwhile; ?>
