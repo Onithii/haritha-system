@@ -14,7 +14,7 @@ $officer_id = $_SESSION['user_id'];
 $complaint_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 
 if ($complaint_id === 0) {
-    die("Invalid Complaint ID.");
+    die("Invalid Complaint ID. <a href='gn_dash.php'>Return to Dashboard</a>");
 }
 
 $message = "";
@@ -33,7 +33,7 @@ $complaint = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
 mysqli_stmt_close($stmt);
 
 if (!$complaint) {
-    die("Complaint records not found.");
+    die("Complaint records not found. <a href='gn_dash.php'>Return to Dashboard</a>");
 }
 
 $comp_lat = floatval($complaint['latitude']);
@@ -162,7 +162,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <div class="header">
     <h1>Haritha Investigation Desk</h1>
-    <a href="../gn_dash.php" class="back-btn">← Back to Dashboard</a>
+    <a href="gn_dash.php" class="back-btn">← Back to Dashboard</a>
 </div>
 
 <div class="wrapper">
