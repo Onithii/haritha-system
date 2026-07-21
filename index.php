@@ -1,28 +1,40 @@
 <?php
-include("config/db.php"); // Adjust this path to point to your database configuration file
+include("config/db.php"); // Adjust path if needed
 
-// 1. Fetch data for the District Complaints Chart
-$district_labels = [];
-$district_counts = [];
-$district_query = "SELECT district, COUNT(complaint_id) as total FROM complaints WHERE district IS NOT NULL AND district != '' GROUP BY district LIMIT 8";
-$district_result = mysqli_query($conn, $district_query);
-if ($district_result) {
-    while ($row = mysqli_fetch_assoc($district_result)) {
-        $district_labels[] = $row['district'];
-        $district_counts[] = (int)$row['total'];
-    }
+// 1. Total Registered Citizens (users with role_id = 1)
+$citizens_count = 0;
+$citizens_query = "SELECT COUNT(user_id) AS total FROM users WHERE role_id = 1";
+$citizens_result = mysqli_query($conn, $citizens_query);
+if ($citizens_result) {
+    $row = mysqli_fetch_assoc($citizens_result);
+    $citizens_count = (int)$row['total'];
 }
 
-// 2. Fetch data for the Volunteer Events Tracking Metrics
-$event_titles = [];
-$event_volunteers = [];
-$event_query = "SELECT event_title, required_volunteers FROM volunteer_events ORDER BY created_at DESC LIMIT 5";
-$event_result = mysqli_query($conn, $event_query);
-if ($event_result) {
-    while ($row = mysqli_fetch_assoc($event_result)) {
-        $event_titles[] = strlen($row['event_title']) > 20 ? substr($row['event_title'], 0, 17) . '...' : $row['event_title'];
-        $event_volunteers[] = (int)$row['required_volunteers'];
-    }
+// 2. Complaints Resolved (status_id = 2, representing resolved)
+$resolved_count = 0;
+$resolved_query = "SELECT COUNT(complaint_id) AS total FROM complaints WHERE status_id = 2";
+$resolved_result = mysqli_query($conn, $resolved_query);
+if ($resolved_result) {
+    $row = mysqli_fetch_assoc($resolved_result);
+    $resolved_count = (int)$row['total'];
+}
+
+// 3. Total Cleanup & Volunteer Events
+$events_count = 0;
+$events_query = "SELECT COUNT(event_id) AS total FROM volunteer_events";
+$events_result = mysqli_query($conn, $events_query);
+if ($events_result) {
+    $row = mysqli_fetch_assoc($events_result);
+    $events_count = (int)$row['total'];
+}
+
+// 5. Participating Authorities / Officers (users with role_id IN (2, 3, 4, 5))
+$authorities_count = 0;
+$authorities_query = "SELECT COUNT(user_id) AS total FROM users WHERE role_id IN (2, 3, 4, 5)";
+$authorities_result = mysqli_query($conn, $authorities_query);
+if ($authorities_result) {
+    $row = mysqli_fetch_assoc($authorities_result);
+    $authorities_count = (int)$row['total'];
 }
 ?>
 <!DOCTYPE html>
@@ -33,8 +45,6 @@ if ($event_result) {
     <title>හරිත - Environmental Complaint Portal</title>
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@400;700&family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <!-- Chart.js Engine CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * {
             margin: 0;
@@ -49,7 +59,7 @@ if ($event_result) {
             overflow-x: hidden;
         }
 
-        /* Hero Header with the fading background image */
+        /* Hero Header */
         header {
             position: relative;
             height: 75vh;
@@ -153,62 +163,65 @@ if ($event_result) {
             line-height: 1.6;
         }
 
-        /* Live Metrics Visual Data Component Dashboard Layout */
-        .analytics-container {
-            padding: 40px 10%;
+        /* Haritha at a Glance - Key Metrics Section */
+        .stats-container {
+            padding: 50px 10%;
             max-width: 1400px;
             margin: 0 auto;
         }
 
-        .analytics-title {
+        .stats-title {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 40px;
             color: #1b4d3e;
         }
 
-        .analytics-title h2 {
-            font-size: 2rem;
+        .stats-title h2 {
+            font-size: 2.2rem;
             font-weight: 700;
         }
 
-        .analytics-title p {
+        .stats-title p {
             color: #666;
             font-size: 1rem;
-            margin-top: 5px;
+            margin-top: 8px;
         }
 
-        .charts-grid {
+        .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
-            gap: 30px;
-            margin-bottom: 40px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 25px;
         }
 
-        .chart-card {
+        .stat-card {
             background: #ffffff;
-            padding: 25px;
-            border-radius: 15px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.03);
-            border-top: 4px solid #1b4d3e;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            padding: 35px 20px;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.03);
+            border-top: 5px solid #27ae60;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
 
-        .chart-card h3 {
-            font-size: 1.1rem;
+        .stat-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 15px 35px rgba(39, 174, 96, 0.15);
+        }
+
+        .stat-number {
+            font-size: 2.8rem;
+            font-weight: 700;
             color: #1b4d3e;
-            margin-bottom: 20px;
-            text-align: left;
-            width: 100%;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
+            line-height: 1;
+            margin-bottom: 12px;
         }
 
-        .chart-wrapper {
-            position: relative;
-            width: 100%;
-            height: 300px;
+        .stat-label {
+            font-size: 0.95rem;
+            color: #555;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         /* Informational Features Section */
@@ -255,11 +268,11 @@ if ($event_result) {
         }
 
         @media(max-width: 768px) {
-            .charts-grid {
-                grid-template-columns: 1fr;
-            }
             .hero-content h1 {
                 font-size: 2rem;
+            }
+            .stat-number {
+                font-size: 2.2rem;
             }
         }
     </style>
@@ -281,28 +294,32 @@ if ($event_result) {
         </div>
     </header>
 
-    <!-- Interactive Metrics Dashboard Visualization Panel -->
-    <section class="analytics-container">
-        <div class="analytics-title">
-            <h2>Our Environmental Footprint Context</h2>
-            <p>Live regional parameters managed directly through the database system metrics</p>
+    <!-- Haritha at a Glance - Key Impact Metrics -->
+    <section class="stats-container">
+        <div class="stats-title">
+            <h2>Haritha at a Glance</h2>
+            <p>Real-time impact metrics driven directly by our registered community & officers</p>
         </div>
 
-        <div class="charts-grid">
-            <!-- Card Chart 1: Regional Incidents -->
-            <div class="chart-card">
-                <h3>Complaints Tracked Across Districts</h3>
-                <div class="chart-wrapper">
-                    <canvas id="complaintsChart"></canvas>
-                </div>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number"><?php echo number_format($citizens_count); ?>+</div>
+                <div class="stat-label">Registered Citizens</div>
             </div>
 
-            <!-- Card Chart 2: Volunteers Performance -->
-            <div class="chart-card">
-                <h3>Required Support Volume by Active Volunteer Events</h3>
-                <div class="chart-wrapper">
-                    <canvas id="eventsChart"></canvas>
-                </div>
+            <div class="stat-card">
+                <div class="stat-number"><?php echo number_format($resolved_count); ?>+</div>
+                <div class="stat-label">Complaints Resolved</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-number"><?php echo number_format($events_count); ?>+</div>
+                <div class="stat-label">Cleanup Events</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-number"><?php echo number_format($authorities_count); ?>+</div>
+                <div class="stat-label">Participating Authorities</div>
             </div>
         </div>
     </section>
@@ -326,98 +343,5 @@ if ($event_result) {
         <p>&copy; 2026 හරිත Environmental Protection Bureau. All rights reserved.</p>
     </footer>
 
-    <!-- Chart Configuration Script Section Injector -->
-    <script>
-        // Data injected smoothly from PHP arrays into JavaScript arrays
-        const districtLabels = <?php echo json_encode($district_labels); ?>;
-        const districtCounts = <?php echo json_encode($district_counts); ?>;
-
-        const eventTitles = <?php echo json_encode($event_titles); ?>;
-        const eventVolunteers = <?php echo json_encode($event_volunteers); ?>;
-
-        // Render Chart 1: District Complaints Overview (Bar Chart)
-        const ctxComplaints = document.getElementById('complaintsChart').getContext('2d');
-        new Chart(ctxComplaints, {
-            type: 'bar',
-            data: {
-                labels: districtLabels.length ? districtLabels : ['No Data Received'],
-                datasets: []
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: '#eef2ee' },
-                        ticks: { color: '#7f8c8d' }
-                    },
-                    x: {
-                        grid: { display: false },
-                        ticks: { color: '#2c3e50', font: { weight: '600' } }
-                    }
-                }
-            }
-        });
-
-        // Add dataset dynamically to allow clear conditional checks
-        if (districtLabels.length) {
-            ctxComplaints.chart.data.datasets.push({
-                label: 'Logged Complaints Count',
-                data: districtCounts,
-                backgroundColor: 'rgba(39, 174, 96, 0.85)',
-                borderColor: '#27ae60',
-                borderWidth: 1.5,
-                borderRadius: 6,
-                barThickness: 28
-            });
-            ctxComplaints.chart.update();
-        }
-
-        // Render Chart 2: Volunteer Action Scope Metrics (Horizontal Bar / Progress Track Chart)
-        const ctxEvents = document.getElementById('eventsChart').getContext('2d');
-        new Chart(ctxEvents, {
-            type: 'y', // Horizontal Layout Direction Configuration
-            data: {
-                labels: eventTitles.length ? eventTitles : ['No Active Events Available'],
-                datasets: []
-            },
-            options: {
-                indexAxis: 'y', 
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
-                },
-                scales: {
-                    x: {
-                        beginAtZero: true,
-                        grid: { color: '#eef2ee' },
-                        ticks: { color: '#7f8c8d' }
-                    },
-                    y: {
-                        grid: { display: false },
-                        ticks: { color: '#2c3e50', font: { size: 12 } }
-                    }
-                }
-            }
-        });
-
-        if (eventTitles.length) {
-            ctxEvents.chart.data.datasets.push({
-                label: 'Required Volunteers Capacity Target',
-                data: eventVolunteers,
-                backgroundColor: 'rgba(27, 77, 62, 0.85)',
-                borderColor: '#1b4d3e',
-                borderWidth: 1.5,
-                borderRadius: 4,
-                barThickness: 18
-            });
-            ctxEvents.chart.update();
-        }
-    </script>
 </body>
 </html>
