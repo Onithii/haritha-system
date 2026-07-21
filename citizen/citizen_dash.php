@@ -29,8 +29,47 @@ $notification_count = mysqli_num_rows($broadcast_result);
         .header {
             background-color: #2e7d32;
             color: white;
-            padding: 20px;
+            padding: 20px 10%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+        }
+
+        .header-title-container {
             text-align: center;
+            flex-grow: 1;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .header p {
+            margin: 5px 0 0 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .btn-home {
+            background-color: #ffffff;
+            color: #2e7d32;
+            padding: 9px 18px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 14px;
+            transition: background-color 0.2s, color 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+        }
+
+        .btn-home:hover {
+            background-color: #e8f5e9;
+            color: #1b5e20;
         }
 
         .container {
@@ -221,7 +260,7 @@ $notification_count = mysqli_num_rows($broadcast_result);
 
         .noti-panel.open {
             right: 0;
-            }
+        }
 
         .noti-panel-header {
             display: flex;
@@ -343,8 +382,13 @@ $notification_count = mysqli_num_rows($broadcast_result);
 </div>
 
 <div class="header">
-    <h1>Citizen Dashboard</h1>
-    <p>Welcome to Haritha Environmental Complaint System</p>
+    <a href="../index.php" class="btn-home">&larr; Back to Home</a>
+    <div class="header-title-container">
+        <h1>Citizen Dashboard</h1>
+        <p>Welcome to Haritha Environmental Complaint System</p>
+    </div>
+    <!-- Spacer to keep header title perfectly centered -->
+    <div style="width: 130px;"></div>
 </div>
 
 <div class="container">
