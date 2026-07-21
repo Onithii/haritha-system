@@ -22,7 +22,7 @@ if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])) {
 
 // 2. Validate incoming event ID parameters
 if (!isset($_GET['id']) || empty(trim($_GET['id']))) {
-    header("Location: citizen_dashboard.php");
+    header("Location: citizen_dash.php");
     exit();
 }
 
@@ -46,7 +46,7 @@ if ($stmt) {
 
 if (!$event) {
     echo "<h3>Event not found or has been removed.</h3>";
-    echo "<a href='citizen_dashboard.php'>Return to Dashboard</a>";
+    echo "<a href='citizen_dash.php'>Return to Dashboard</a>";
     exit();
 }
 
@@ -267,7 +267,7 @@ $is_event_full = ($current_volunteers >= (int)$event['required_volunteers']);
 <body>
 
 <div class="header">
-    <a href="citizen_dashboard.php" class="back-btn">← Back to Dashboard</a>
+    <a href="citizen_dash.php" class="back-btn">← Back to Dashboard</a>
     <h1>Environmental Action Center</h1>
     <p>Community Mobilization Portal</p>
 </div>
